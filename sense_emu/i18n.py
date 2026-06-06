@@ -40,7 +40,7 @@ def init_i18n(languages=None):
         # translation of strings
         locale.setlocale(locale.LC_ALL, 'C')
     else:
-        # Set translation domain for GNU's gettext (needed by GTK's Builder)
+        # Set translation domain for GNU's gettext
         try:
             locale.bindtextdomain(__project__, localedir)
             locale.textdomain(__project__)
