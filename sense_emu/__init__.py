@@ -44,13 +44,11 @@ __platforms__    = ['ALL']
 __classifiers__ = [
     'Development Status :: 5 - Production/Stable',
     'Environment :: Console',
-    'Environment :: X11 Applications :: GTK',
+    'Environment :: X11 Applications :: Qt',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
     'License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)',
-    'Operating System :: POSIX :: Linux',
-    'Operating System :: MacOS :: MacOS X',
-    'Operating System :: Microsoft :: Windows',
+    'Operating System :: OS Independent',
     'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3.2',
     'Programming Language :: Python :: 3.3',
@@ -87,6 +85,6 @@ __entry_points__ = {
         'sense_csv = sense_emu.dump:app',
         ],
     'gui_scripts': [
-        'sense_emu_gui = sense_emu.gui:main',
+        'sense_emu_gui = sense_emu.pyside_app:main',
         ],
     }

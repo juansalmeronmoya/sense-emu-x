@@ -12,8 +12,7 @@ console_scripts =
     sense_csv = sense_emu.dump:app
     sense_emu_tui = sense_emu.tui:main
 gui_scripts =
-    sense_emu_gui = sense_emu.gui:main
-    sense_emu_pyside = sense_emu.pyside_app:main
+    sense_emu_gui = sense_emu.pyside_app:main
 """
 content = re.sub(r"\[options\.entry_points\].*?(?=\n\[|$)", entry_points_patch.strip(), content, flags=re.DOTALL)
 
@@ -28,7 +27,7 @@ doc =
     sphinx-rtd-theme
 tui =
     textual
-pyside =
+gui =
     PySide6
 """
 content = re.sub(r"\[options\.extras_require\].*?(?=\n\[options\.entry_points\]|$)", extras_patch.strip() + "\n\n", content, flags=re.DOTALL)
