@@ -10,16 +10,10 @@ MSGINIT=msginit
 MSGMERGE=msgmerge
 MSGFMT=msgfmt
 XGETTEXT=xgettext
-GCS=glib-compile-schemas
 DEST_DIR=/
 
-# Find the location of the GObject introspection libs and cairo (required for
-# the develop target)
+# Find the location of RTIMULib (only needed on Raspberry Pi)
 RTIMULIB:=$(wildcard /usr/lib/python3/dist-packages/RTIMU.*)
-CAIRO:=$(wildcard /usr/lib/python3/dist-packages/cairo)
-GI:=$(wildcard /usr/lib/python3/dist-packages/gi)
-GOBJECT:=
-GLIB:=
 
 # Calculate the base names of the distribution, the location of all source,
 # documentation, packaging, icon, and executable script files
@@ -43,12 +37,10 @@ SUBDIRS:=icons
 DIST_WHEEL=dist/$(WHEEL_NAME)-$(VER)-py3-none-any.whl
 DIST_TAR=dist/$(NAME)-$(VER).tar.gz
 DIST_ZIP=dist/$(NAME)-$(VER).zip
-MAN_PAGES=man/sense_rec.1 man/sense_play.1 man/sense_csv.1 man/sense_emu_gui.1
+MAN_PAGES=man/sense_rec.1 man/sense_play.1 man/sense_csv.1
 POT_FILE=$(WHEEL_NAME)/locale/$(NAME).pot
 PO_FILES:=$(wildcard $(WHEEL_NAME)/locale/*.po)
 MO_FILES:=$(patsubst $(WHEEL_NAME)/locale/%.po,$(WHEEL_NAME)/locale/%/LC_MESSAGES/$(NAME).mo,$(PO_FILES))
-GSCHEMA_FILES:=$(wildcard $(WHEEL_NAME)/*.gschema.xml)
-GSCHEMA_COMPILED=$(WHEEL_NAME)/gschemas.compiled
 
 
 # Default target
@@ -56,7 +48,6 @@ all:
 	@echo "make install - Install on local system"
 	@echo "make develop - Install symlinks for development"
 	@echo "make i18n - Update translation files"
-	@echo "make gschema - Update gschema settings"
 	@echo "make test - Run tests"
 	@echo "make doc - Generate HTML and PDF documentation"
 	@echo "make source - Create source package"
@@ -68,7 +59,7 @@ all:
 	@echo "make release - Create and tag a new release"
 	@echo "make upload - Upload the new release to repositories"
 
-install: $(SUBDIRS) $(MO_FILES) $(GSCHEMA_COMPILED)
+install: $(SUBDIRS) $(MO_FILES)
 	$(PYTHON) $(PYFLAGS) setup.py install --root $(DEST_DIR)
 
 doc: $(DOC_SOURCES)
@@ -90,8 +81,6 @@ dist: $(DIST_WHEEL) $(DIST_TAR) $(DIST_ZIP)
 
 i18n: $(MO_FILES) $(PO_FILES) $(POT_FILE)
 
-gschema: $(GSCHEMA_COMPILED)
-
 develop:
 	@# These have to be done separately to avoid a cockup...
 	$(PIP) install -U setuptools
@@ -99,30 +88,13 @@ develop:
 	$(PIP) install -U twine
 	$(PIP) install -U tox
 	$(PIP) install -e .[doc,test]
-	@# If we're in a venv, link the system's GObject Introspection (gi) into it
 ifeq ($(VIRTUAL_ENV),)
-	@echo "Virtualenv not detected! You may need to link gi manually"
+	@echo "Virtualenv not detected! You may need to link RTIMULib manually"
 else
 ifeq ($(RTIMULIB),)
 	@echo "WARNING: RTIMULib not found. This is fine on non-Pi platforms"
 else
 	ln -sf $(RTIMULIB) $(VIRTUAL_ENV)/lib/python*/site-packages/
-endif
-ifeq ($(CAIRO),)
-	@echo "ERROR: cairo not found. Install the python{,3}-cairo packages"
-else
-	ln -sf $(CAIRO) $(VIRTUAL_ENV)/lib/python*/site-packages/
-endif
-ifeq ($(GI),)
-	@echo "ERROR: gi not found. Install the python{,3}-gi packages"
-else
-	ln -sf $(GI) $(VIRTUAL_ENV)/lib/python*/site-packages/
-endif
-ifneq ($(GLIB),)
-	ln -sf $(GLIB) $(VIRTUAL_ENV)/lib/python*/site-packages/
-endif
-ifneq ($(GOBJECT),)
-	ln -sf $(GOBJECT) $(VIRTUAL_ENV)/lib/python*/site-packages/
 endif
 endif
 
@@ -152,7 +124,7 @@ $(MAN_PAGES): $(DOC_SOURCES)
 	cp build/man/*.[0-9] man/
 
 $(POT_FILE): $(PY_SOURCES)
-	$(XGETTEXT) -cI18N -o $@ $(filter %.py,$^) $(filter %.ui,$^)
+	$(XGETTEXT) -cI18N -o $@ $(filter %.py,$^)
 
 $(PO_FILES): $(POT_FILE)
 	$(MSGMERGE) -U $@ $<
@@ -161,16 +133,13 @@ $(MO_FILES): $(PO_FILES)
 	mkdir -p $(dir $@)
 	$(MSGFMT) $(patsubst $(WHEEL_NAME)/locale/%/LC_MESSAGES/$(NAME).mo,$(WHEEL_NAME)/locale/%.po,$@) -o $@
 
-$(GSCHEMA_COMPILED): $(GSCHEMA_FILES)
-	$(GCS) $(WHEEL_NAME)
-
-$(DIST_TAR): $(PY_SOURCES) $(MO_FILES) $(GSCHEMA_COMPILED) $(SUBDIRS)
+$(DIST_TAR): $(PY_SOURCES) $(MO_FILES) $(SUBDIRS)
 	$(PYTHON) $(PYFLAGS) setup.py sdist --formats gztar
 
-$(DIST_ZIP): $(PY_SOURCES) $(MO_FILES) $(GSCHEMA_COMPILED) $(SUBDIRS)
+$(DIST_ZIP): $(PY_SOURCES) $(MO_FILES) $(SUBDIRS)
 	$(PYTHON) $(PYFLAGS) setup.py sdist --formats zip
 
-$(DIST_WHEEL): $(PY_SOURCES) $(MO_FILES) $(GSCHEMA_COMPILED) $(SUBDIRS)
+$(DIST_WHEEL): $(PY_SOURCES) $(MO_FILES) $(SUBDIRS)
 	$(PYTHON) $(PYFLAGS) setup.py bdist_wheel
 
 release:
@@ -183,4 +152,4 @@ upload: $(DIST_TAR) $(DIST_WHEEL)
 	$(TWINE) check $(DIST_TAR) $(DIST_WHEEL)
 	$(TWINE) upload $(DIST_TAR) $(DIST_WHEEL)
 
-.PHONY: all install develop test doc source wheel zip tar dist clean tags release upload $(SUBDIRS)
+.PHONY: all install develop test doc source wheel zip tar dist clean tags release upload i18n $(SUBDIRS)
