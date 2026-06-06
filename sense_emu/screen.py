@@ -98,6 +98,9 @@ class ScreenClient:
             self._touch_stop.set()
             self._touch_thread.join()
             self._touch_thread = None
+            # Release numpy views before closing mmap to avoid BufferError
+            self._screen = None
+            self._gamma = None
             self._map.close()
             self._map = None
             self._fd.close()
