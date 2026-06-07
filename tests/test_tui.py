@@ -158,3 +158,79 @@ class TestSenseEmuTUI:
             widget.update_matrix()  # should try to reopen
         if widget.screen_file:
             widget.screen_file.close()
+
+
+class TestLEDMatrixOnMount:
+    def test_on_mount_opens_screen_file(self, tmp_screen_file):
+        from sense_emu.tui import LEDMatrix
+        widget = LEDMatrix()
+        widget.set_interval = MagicMock()
+        with patch('sense_emu.tui.screen_filename', return_value=tmp_screen_file):
+            widget.on_mount()
+        assert widget.screen_file is not None
+        widget.screen_file.close()
+
+    def test_on_mount_handles_missing_screen_file(self, tmp_path):
+        from sense_emu.tui import LEDMatrix
+        widget = LEDMatrix()
+        widget.set_interval = MagicMock()
+        with patch('sense_emu.tui.screen_filename', return_value=str(tmp_path / 'nofile')):
+            widget.on_mount()
+        assert widget.screen_file is None
+
+
+class TestSenseEmuTUICompose:
+    def test_compose_is_generator(self):
+        from sense_emu.tui import SenseEmuTUI
+        import inspect
+        app = SenseEmuTUI()
+        # compose() is a generator function — verify it returns a generator
+        assert inspect.isgeneratorfunction(app.compose)
+
+    def test_compose_body_with_mocked_context_managers(self):
+        """Cover lines 47-65 in tui.py by mocking the Textual widgets."""
+        from unittest.mock import MagicMock, patch
+        import contextlib
+
+        @contextlib.contextmanager
+        def fake_cm(*args, **kwargs):
+            yield MagicMock()
+
+        fake_widget = MagicMock()
+        fake_widget.__enter__ = lambda s: fake_widget
+        fake_widget.__exit__ = lambda s, *a: None
+
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+
+        with patch('sense_emu.tui.Grid', return_value=fake_widget), \
+             patch('sense_emu.tui.Vertical', return_value=fake_widget), \
+             patch('sense_emu.tui.Header', return_value=MagicMock()), \
+             patch('sense_emu.tui.Footer', return_value=MagicMock()), \
+             patch('sense_emu.tui.Label', return_value=MagicMock()), \
+             patch('sense_emu.tui.Input', return_value=MagicMock()), \
+             patch('sense_emu.tui.LEDMatrix', return_value=MagicMock()):
+            result = list(app.compose())
+        assert len(result) > 0
+
+    def test_on_input_changed_inner_value_error(self, patch_emulator_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = patch_emulator_controller
+        mock_event = MagicMock()
+        mock_event.input.id = 'pitch'
+        mock_event.value = '10'
+        # query_one returns a mock with non-numeric value
+        mock_input = MagicMock()
+        mock_input.value = 'not_a_number'
+        app.query_one = MagicMock(return_value=mock_input)
+        app.on_input_changed(mock_event)  # should hit except ValueError: pass
+
+    def test_on_input_changed_unmatched_id(self, patch_emulator_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = patch_emulator_controller
+        mock_event = MagicMock()
+        mock_event.input.id = 'unknown_id'
+        mock_event.value = '42'
+        app.on_input_changed(mock_event)  # falls through without matching any condition

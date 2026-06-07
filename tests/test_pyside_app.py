@@ -73,6 +73,29 @@ class TestLEDMatrixWidget:
                 widget.screen_file = None
                 widget.update_matrix()  # should not raise
 
+    def test_update_matrix_reads_192_bytes(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        with open(tmp_screen_file, 'r+b') as f:
+            f.write(b'\x00' * 192)
+        with patch('sense_emu.pyside_app.screen_filename', return_value=tmp_screen_file):
+            widget = LEDMatrixWidget()
+            qtbot.addWidget(widget)
+            widget.timer.stop()
+            widget.update_matrix()
+        assert len(widget.matrix_data) == 192
+
+    def test_paint_event_executes(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        from PySide6.QtGui import QPaintEvent
+        from PySide6.QtCore import QRect
+        with patch('sense_emu.pyside_app.screen_filename', return_value=tmp_screen_file):
+            widget = LEDMatrixWidget()
+            qtbot.addWidget(widget)
+            widget.resize(320, 320)
+            widget.timer.stop()
+            event = QPaintEvent(QRect(0, 0, 320, 320))
+            widget.paintEvent(event)
+
 
 class TestSenseEmuDesktop:
     def test_init_creates_window(self, qtbot, emulator, tmp_screen_file):
@@ -126,3 +149,19 @@ class TestPysideMain:
     def test_pyside_main_module(self):
         import sense_emu.pyside_main as pm
         assert hasattr(pm, 'main')
+
+
+class TestPysideMainFunction:
+    def test_main_calls_sys_exit(self, tmp_screen_file, emulator):
+        from sense_emu.pyside_app import main
+        with patch('sense_emu.pyside_app.QApplication') as mock_app_cls, \
+             patch('sense_emu.pyside_app.SenseEmuDesktop') as mock_window_cls, \
+             patch('sys.exit') as mock_exit, \
+             patch('sense_emu.pyside_app.EmulatorController'):
+            mock_app = MagicMock()
+            mock_app.exec.return_value = 0
+            mock_app_cls.return_value = mock_app
+            mock_window = MagicMock()
+            mock_window_cls.return_value = mock_window
+            main()
+        mock_exit.assert_called_once_with(0)
