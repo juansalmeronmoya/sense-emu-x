@@ -3,9 +3,22 @@ from textual.containers import Grid, Vertical
 from textual.widgets import Header, Footer, Static, Input, Label
 from textual.reactive import reactive
 
+import numpy as np
+
 from .core import EmulatorController
 from .screen import screen_filename
 import io
+
+# Total size of the screen frame-buffer file: 64 RGB565 pixels (2 bytes each)
+# followed by a 32-entry gamma lookup table (1 byte each).
+SCREEN_SIZE = 160
+
+# Final gamma correction applied to the RGB LEDs. This mirrors
+# ScreenClient._gamma_rgbled: the HAT's LEDs are far brighter than an LCD, and
+# the non-zero starting point means LEDs that are off appear gray rather than
+# black.
+_GAMMA_RGBLED = (np.sqrt(np.sqrt(np.linspace(0.05, 1, 32))) * 255).astype(np.uint8)
+
 
 class LEDMatrix(Static):
     def on_mount(self):
@@ -21,19 +34,32 @@ class LEDMatrix(Static):
                 self.screen_file = io.open(screen_filename(), 'rb')
             except:
                 return
-        
+
         self.screen_file.seek(0)
-        data = self.screen_file.read(192) # 64 pixels * 3 bytes (RGB)
-        if len(data) == 192:
-            lines = []
-            for y in range(8):
-                line = ""
-                for x in range(8):
-                    offset = (y * 8 + x) * 3
-                    r, g, b = data[offset], data[offset+1], data[offset+2]
-                    line += f"[rgb({r},{g},{b})]██[/]"
-                lines.append(line)
-            self.update("\n".join(lines))
+        data = self.screen_file.read(SCREEN_SIZE)
+        if len(data) < SCREEN_SIZE:
+            return
+
+        # Decode the RGB565 pixels and per-user gamma table, then apply the
+        # same conversion the GUI/ScreenClient use so colours match exactly.
+        screen = np.frombuffer(data[:128], dtype=np.uint16).reshape((8, 8))
+        gamma = np.frombuffer(data[128:160], dtype=np.uint8)
+
+        rgb = np.empty((8, 8, 3), dtype=np.uint8)
+        rgb[..., 0] = ((screen & 0xF800) >> 11).astype(np.uint8)
+        rgb[..., 1] = ((screen & 0x07E0) >> 6).astype(np.uint8)
+        rgb[..., 2] = (screen & 0x001F).astype(np.uint8)
+        rgb = np.take(gamma, rgb)
+        rgb = np.take(_GAMMA_RGBLED, rgb)
+
+        lines = []
+        for y in range(8):
+            line = ""
+            for x in range(8):
+                r, g, b = (int(v) for v in rgb[y, x])
+                line += f"[rgb({r},{g},{b})]██[/]"
+            lines.append(line)
+        self.update("\n".join(lines))
 
 class SenseEmuTUI(App):
     CSS = """
