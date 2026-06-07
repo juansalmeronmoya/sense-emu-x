@@ -12,6 +12,7 @@ MSGFMT=msgfmt
 XGETTEXT=xgettext
 DEST_DIR=/
 
+<<<<<<< HEAD
 # Find the location of RTIMULib (only needed on Raspberry Pi)
 RTIMULIB:=$(wildcard /usr/lib/python3/dist-packages/RTIMU.*)
 
