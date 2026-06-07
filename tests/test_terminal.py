@@ -179,3 +179,119 @@ class TestTerminalApplication:
         app = _AppWithConfig()
         result = app([])
         assert result == 0
+
+    def test_read_configuration_with_config_and_extra_files(self, tmp_path):
+        cfg = tmp_path / 'myapp.ini'
+        cfg.write_text('[myapp]\nfoo = bar\npdb = false\n')
+
+        class _AppWithConfig2(TerminalApplication):
+            def __init__(self):
+                super().__init__(
+                    version='1.0',
+                    config_files=[str(cfg)],
+                    config_section='myapp',
+                    config_bools=['pdb'],
+                )
+            def main(self, args):
+                return 0
+
+        app = _AppWithConfig2()
+        result = app([])
+        assert result == 0
+
+    def test_read_configuration_no_section_error(self, tmp_path):
+        cfg = tmp_path / 'app.ini'
+        cfg.write_text('[wrongsection]\nfoo = bar\n')
+
+        class _AppBadSection(TerminalApplication):
+            def __init__(self):
+                super().__init__(
+                    version='1.0',
+                    config_files=[str(cfg)],
+                    config_section='app',
+                )
+            def main(self, args):
+                return 0
+
+        app = _AppBadSection()
+        with pytest.raises(SystemExit):
+            app([])
+
+    def test_argcomplete_branch(self):
+        """Cover the argcomplete.autocomplete branch (lines 156-157)."""
+        import sense_emu.terminal as term_mod
+        app = _ConcreteApp()
+        mock_ac = MagicMock()
+        with patch.object(term_mod, 'argcomplete', mock_ac):
+            result = app([])
+        mock_ac.autocomplete.assert_called_once()
+
+    def test_file_type_stdin_buffer_attr_error(self):
+        """Cover AttributeError path when stdin has no .buffer (line 71-73)."""
+        ft = FileType('rb')
+        mock_stdin = MagicMock(spec=[])  # no .buffer attr
+        with patch('sys.stdin', mock_stdin):
+            result = ft('-')
+        assert result is mock_stdin
+
+    def test_file_type_stdout_buffer_attr_error(self):
+        """Cover AttributeError path when stdout has no .buffer (line 77-78)."""
+        ft = FileType('wb')
+        mock_stdout = MagicMock(spec=[])  # no .buffer attr
+        with patch('sys.stdout', mock_stdout):
+            result = ft('-')
+        assert result is mock_stdout
+
+    def test_read_configuration_with_explicit_config_flag(self, tmp_path):
+        """Cover conf_args.config branch (lines 181-187)."""
+        cfg = tmp_path / 'extra.ini'
+        cfg.write_text('[app]\nfoo = bar\n')
+        # Need a non-empty initial config_files so config is enabled
+        dummy = tmp_path / 'dummy.ini'
+        dummy.write_text('[app]\n')
+
+        class _AppWithConfig3(TerminalApplication):
+            def __init__(self):
+                super().__init__(
+                    version='1.0',
+                    config_files=[str(dummy)],
+                    config_section='app',
+                )
+            def main(self, args):
+                return 0
+
+        app = _AppWithConfig3()
+        result = app(['-c', str(cfg)])
+        assert result == 0
+
+    def test_read_configuration_config_section_none_uses_first(self, tmp_path):
+        """Cover config_section=None -> sections()[0] path (line 194)."""
+        cfg = tmp_path / 'auto.ini'
+        cfg.write_text('[autosection]\nfoo = bar\n')
+
+        class _AppAutoSection(TerminalApplication):
+            def __init__(self):
+                super().__init__(
+                    version='1.0',
+                    config_files=[str(cfg)],
+                    config_section=None,
+                )
+            def main(self, args):
+                return 0
+
+        app = _AppAutoSection()
+        result = app([])
+        assert result == 0
+
+    def test_call_with_none_args_uses_sysargv(self):
+        """Cover line 155: args = sys.argv[1:] when args is None."""
+        app = _ConcreteApp()
+        with patch('sys.argv', ['prog']):  # sys.argv[1:] == []
+            result = app(None)
+        assert result == 0
+
+    def test_file_type_dash_read_text_mode(self):
+        """Cover the 68->73 branch: FileType('r') with no 'b', returns sys.stdin."""
+        ft = FileType('r')
+        result = ft('-')
+        assert result is sys.stdin

@@ -259,3 +259,166 @@ class TestSenseStickCallbacks:
         with patch('select.select', return_value=([], [], [])):
             result = stick._wait(0.0)
         assert result is False
+
+
+class TestSenseStickInit:
+    def test_init_and_close(self, tmp_stick_addr):
+        """Cover SenseStick.__init__ and _stick_device (lines 157-160, 180)."""
+        server = StickServer()
+        try:
+            stick = SenseStick()
+            assert stick._stick_file is not None
+            stick.close()
+            assert stick._stick_file is None
+        finally:
+            server.close()
+
+    def test_close_when_already_none(self):
+        """Cover close() when _stick_file is None (line 163->exit)."""
+        stick = SenseStick.__new__(SenseStick)
+        from threading import Event
+        stick._callbacks = {}
+        stick._callback_thread = None
+        stick._callback_event = Event()
+        stick._stick_file = None
+        stick.close()  # should not raise
+
+
+class TestCallbackRun:
+    def _make_stick(self):
+        stick = SenseStick.__new__(SenseStick)
+        from threading import Event
+        stick._callbacks = {}
+        stick._callback_thread = None
+        stick._callback_event = Event()
+        stick._stick_file = MagicMock()
+        return stick
+
+    def test_callback_run_fires_direction_callback(self):
+        """Cover _callback_run body (lines 265-273)."""
+        stick = self._make_stick()
+        evt = InputEvent(1.0, DIRECTION_UP, ACTION_PRESSED)
+        called = []
+        stick._callbacks[DIRECTION_UP] = lambda e: called.append(e)
+
+        call_count = [0]
+        def mock_read():
+            call_count[0] += 1
+            if call_count[0] == 1:
+                stick._callback_event.set()
+                return evt
+            return None
+
+        stick._read = mock_read
+        stick._callback_run()
+        assert called == [evt]
+
+    def test_callback_run_fires_wildcard_callback(self):
+        """Cover _callback_run wildcard path (lines 271-273)."""
+        stick = self._make_stick()
+        evt = InputEvent(1.0, DIRECTION_UP, ACTION_PRESSED)
+        called = []
+        stick._callbacks['*'] = lambda e: called.append(e)
+
+        call_count = [0]
+        def mock_read():
+            call_count[0] += 1
+            if call_count[0] == 1:
+                stick._callback_event.set()
+                return evt
+            return None
+
+        stick._read = mock_read
+        stick._callback_run()
+        assert called == [evt]
+
+    def test_start_stop_thread_stop_path(self):
+        """Cover _start_stop_thread stop path (lines 260-262)."""
+        stick = self._make_stick()
+
+        # Use a mock _callback_run that waits for the event
+        def waiting_run():
+            stick._callback_event.wait()
+
+        stick._callback_run = waiting_run
+
+        # Start thread by setting a callback
+        stick.direction_up = lambda: None
+        import time as _time
+        _time.sleep(0.05)
+        assert stick._callback_thread is not None
+
+        # Stop thread by clearing all callbacks manually and calling _start_stop_thread
+        stick._callbacks.clear()
+        stick._start_stop_thread()
+        assert stick._callback_thread is None
+
+    def test_wait_for_event_emptybuffer(self):
+        """Cover wait_for_event emptybuffer path (lines 285-286)."""
+        stick = self._make_stick()
+        evt = InputEvent(1.0, DIRECTION_UP, ACTION_PRESSED)
+        # First _wait(0) returns True (buffered event), second returns False (buffer empty), third returns True
+        wait_calls = iter([True, False, True])
+        def mock_wait(timeout=None):
+            try:
+                return next(wait_calls)
+            except StopIteration:
+                return False
+
+        with patch.object(stick, '_wait', side_effect=mock_wait), \
+             patch.object(stick, '_read', return_value=evt):
+            result = stick.wait_for_event(emptybuffer=True)
+        assert result == evt
+
+    def test_get_events_skips_none_event(self):
+        """Cover get_events branch where _read returns None (302->300)."""
+        stick = self._make_stick()
+        # First wait returns True with None event, second returns False
+        wait_calls = iter([True, False])
+        def mock_wait(timeout=None):
+            try:
+                return next(wait_calls)
+            except StopIteration:
+                return False
+
+        with patch.object(stick, '_wait', side_effect=mock_wait), \
+             patch.object(stick, '_read', return_value=None):
+            result = stick.get_events()
+        assert result == []
+
+
+class TestStickServerServe:
+    def test_serve_receives_hello_and_sends_data(self, tmp_stick_addr):
+        """Cover StickServer._serve loop body with a real client."""
+        import socket as _socket_mod
+        import os
+        import time as _time
+
+        server = StickServer()
+        _time.sleep(0.05)  # let server thread start
+
+        # The server is bound to tmp_stick_addr
+        addr = tmp_stick_addr
+        client = _socket_mod.socket(_socket_mod.AF_UNIX, _socket_mod.SOCK_DGRAM)
+        client_path = addr + '-client-%d' % id(client)
+        try:
+            os.unlink(client_path)
+        except OSError:
+            pass
+        client.bind(client_path)
+        client.connect(addr)
+        client.send(b'hello')
+        _time.sleep(0.05)  # let server process hello
+
+        # Send data through server
+        buf = b'\x00' * 24
+        server.send(buf)
+        _time.sleep(0.2)  # let server send data
+
+        # Close client and server
+        client.close()
+        try:
+            os.unlink(client_path)
+        except OSError:
+            pass
+        server.close()  # triggers _serve finally block

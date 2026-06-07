@@ -227,3 +227,17 @@ class TestRTHumidity:
         h1 = rthumidity.humidityRead()
         h2 = rthumidity.humidityRead()
         assert h1[1] == h2[1]
+
+
+class TestRTHumidityZeroDivision:
+    def test_humidity_init_zero_division_returns_false(self, tmp_humidity_file):
+        from sense_emu.RTIMU import RTHumidity, Settings
+        from sense_emu.humidity import HumidityServer, HumidityData, HUMIDITY_DATA
+        # Write data where H1_OUT == H0_OUT (causes ZeroDivisionError)
+        zero_div_data = HumidityData(2, b'HTS22', 50, 100, 0, 100, 0, 0, 0, 6400, 0, 0, 0, 0)
+        srv = HumidityServer(simulate_noise=False)
+        srv._write(zero_div_data)
+        rh = RTHumidity(Settings('/etc/RTIMULib'))
+        result = rh.humidityInit()
+        assert result is False
+        srv.close()

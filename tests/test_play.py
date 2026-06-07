@@ -84,3 +84,51 @@ class TestPlayMain:
         lock = EmulatorLock('sense_play')
         # Lock is already held (our PID) — play should detect and return 1
         # We can test source independently; the main lock logic is tested in test_lock.py
+
+
+class TestPlayAcquireFailure:
+    def test_main_returns_1_if_lock_fails(self, tmp_path, sample_recording,
+                                           tmp_pressure_file, tmp_humidity_file,
+                                           tmp_imu_file, tmp_lock_file):
+        from sense_emu.play import PlayApplication
+        app = PlayApplication()
+
+        class FakeLock:
+            def acquire(self):
+                raise RuntimeError('locked')
+            def release(self):
+                pass
+
+        with patch('sense_emu.play.EmulatorLock', return_value=FakeLock()):
+            class Args:
+                input = open(sample_recording, 'rb')
+
+            result = app.main(Args())
+        assert result == 1
+
+
+class TestPlaySkipsAndLogs:
+    def test_play_skips_old_records(
+            self, tmp_pressure_file, tmp_humidity_file, tmp_imu_file, tmp_lock_file,
+            tmp_path):
+        """Cover the skipped-records branch (lines 81->83 and 95->97)."""
+        import tempfile, os
+        now = time.time() - 10.0  # 10 seconds ago — all records in the past
+        with tempfile.NamedTemporaryFile(suffix='.bin', delete=False) as f:
+            fname = f.name
+            f.write(HEADER_REC.pack(b'SENSEHAT', 1, now))
+            for i in range(3):
+                f.write(DATA_REC.pack(
+                    now + i * 0.001,  # timestamps in the past
+                    1013.0, 20.0,
+                    45.0, 20.0,
+                    0.0, 0.0, 1.0,
+                    0.0, 0.0, 0.0,
+                    0.33, 0.0, 0.0,
+                    0.0, 0.0, 0.0,
+                ))
+        try:
+            app = PlayApplication()
+            result = app([fname])
+        finally:
+            os.unlink(fname)

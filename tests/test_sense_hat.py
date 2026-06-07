@@ -593,3 +593,135 @@ class TestSensors:
         hat._imu_init = True
         result = hat._get_raw_data('accelValid', 'accel')
         assert result is None
+
+
+class TestSenseHatInit:
+    def test_full_init(self, tmp_screen_file, tmp_lock_file, tmp_stick_addr):
+        """Cover __init__ body (lines 78-145)."""
+        rtimu_mock = _make_rtimu_mock()
+        import socket
+        # Write our PID to the lock file so lock.wait() returns True
+        with open(tmp_lock_file, 'w') as f:
+            f.write('%d\n' % os.getpid())
+        # Patch SenseStick to avoid real socket connection
+        import sense_emu.sense_hat as sh_mod
+        import importlib
+        with patch.dict('sys.modules', {'RTIMU': rtimu_mock}), \
+             patch('sense_emu.sense_hat.RTIMU', rtimu_mock), \
+             patch('sense_emu.lock.lock_filename', return_value=tmp_lock_file), \
+             patch('sense_emu.stick.stick_address',
+                   return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, tmp_stick_addr)):
+            importlib.reload(sh_mod)
+            # Create a real StickServer so SenseStick can connect
+            from sense_emu.stick import StickServer
+            server = StickServer()
+            try:
+                hat = sh_mod.SenseHat()
+                assert hat._rotation == 0
+                assert hat._fb_device == tmp_screen_file
+                hat._stick.close()
+            finally:
+                server.close()
+
+    def test_init_when_lock_not_held_spawns_gui(self, tmp_screen_file, tmp_lock_file, tmp_stick_addr):
+        """Cover lines 79-91: when lock.wait() returns False, spawns GUI."""
+        rtimu_mock = _make_rtimu_mock()
+        import socket
+        # Don't write lock file, so lock.wait() returns False
+        import sense_emu.sense_hat as sh_mod
+        import importlib
+        with patch.dict('sys.modules', {'RTIMU': rtimu_mock}), \
+             patch('sense_emu.sense_hat.RTIMU', rtimu_mock), \
+             patch('sense_emu.lock.lock_filename', return_value=tmp_lock_file), \
+             patch('sense_emu.stick.stick_address',
+                   return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, tmp_stick_addr)), \
+             patch('sense_emu.sense_hat.sp.Popen') as mock_popen:
+            importlib.reload(sh_mod)
+            from sense_emu.stick import StickServer
+            server = StickServer()
+            try:
+                hat = sh_mod.SenseHat()
+                assert hat._rotation == 0
+                # Popen was called to spawn GUI
+                mock_popen.assert_called_once()
+                hat._stick.close()
+            finally:
+                server.close()
+
+    def test_init_no_fb_device_raises(self, tmp_lock_file, tmp_stick_addr):
+        """Cover line 95: OSError when fb_device is None."""
+        rtimu_mock = _make_rtimu_mock()
+        import socket
+        with open(tmp_lock_file, 'w') as f:
+            f.write('%d\n' % os.getpid())
+        import sense_emu.sense_hat as sh_mod
+        import importlib
+        with patch.dict('sys.modules', {'RTIMU': rtimu_mock}), \
+             patch('sense_emu.sense_hat.RTIMU', rtimu_mock), \
+             patch('sense_emu.lock.lock_filename', return_value=tmp_lock_file), \
+             patch('sense_emu.stick.stick_address',
+                   return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, tmp_stick_addr)):
+            importlib.reload(sh_mod)
+            with patch.object(sh_mod.SenseHat, '_get_fb_device', return_value=None):
+                with pytest.raises(OSError, match='Cannot detect'):
+                    hat = sh_mod.SenseHat()
+
+
+class TestAdditionalSensorBranches:
+    def test_init_humidity_already_initialized(self, hat):
+        hat._humidity_init = True
+        hat._init_humidity()
+        hat._humidity.humidityInit.assert_not_called()
+
+    def test_init_pressure_already_initialized(self, hat):
+        hat._pressure_init = True
+        hat._init_pressure()
+        hat._humidity.humidityInit.assert_not_called()
+
+    def test_get_orientation_radians_when_raw_none(self, hat):
+        hat._imu.IMURead.return_value = False
+        hat._imu_init = True
+        result = hat.get_orientation_radians()
+        assert isinstance(result, dict)
+
+    def test_gamma_setter_with_array_type(self, hat):
+        import array
+        buf = array.array('B', range(32))
+        hat.gamma = buf
+
+    def test_show_message_no_rotation_adjust(self, hat):
+        hat._rotation = 90  # 90-90=0, not < 0, so no adjustment
+        with patch('sense_emu.sense_hat.time') as mock_time:
+            mock_time.sleep = lambda _: None
+            hat.show_message('Hi', scroll_speed=0)
+        assert hat._rotation == 90
+
+    def test_show_letter_no_rotation_adjust(self, hat):
+        hat._rotation = 90
+        with patch('sense_emu.sense_hat.time') as mock_time:
+            mock_time.sleep = lambda _: None
+            hat.show_letter('A')
+        assert hat._rotation == 90
+
+    def test_show_message_with_space_char(self, hat):
+        with patch('sense_emu.sense_hat.time') as mock_time:
+            mock_time.sleep = lambda _: None
+            hat.show_message(' A', scroll_speed=0)
+
+    def test_set_pixels_element_out_of_range(self, hat):
+        pixels = [[0, 0, 0]] * 64
+        pixels[5] = [300, 0, 0]
+        with pytest.raises(ValueError):
+            hat.set_pixels(pixels)
+
+    def test_get_fb_device(self, hat, tmp_screen_file):
+        result = hat._get_fb_device()
+        assert result == tmp_screen_file
+
+    def test_get_settings_file(self, hat):
+        rtimu_mock = _make_rtimu_mock()
+        import sense_emu.sense_hat as sh_mod
+        with patch.dict('sys.modules', {'RTIMU': rtimu_mock}), \
+             patch('sense_emu.sense_hat.RTIMU', rtimu_mock):
+            result = hat._get_settings_file('RTIMULib')
+        assert result is not None
