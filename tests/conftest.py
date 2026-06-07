@@ -80,7 +80,8 @@ def tmp_stick_addr(tmp_path):
     addr = str(tmp_path / 'stick')
     if sys.platform.startswith('win'):
         stick_family = socket.AF_INET
-        addr = ('127.0.0.1', 53753)
+        # Use port 0 to let OS choose an available port
+        addr = ('127.0.0.1', 0)
     else:
         stick_family = socket.AF_UNIX
     with patch(
@@ -111,7 +112,8 @@ def emulator(tmp_path):
     # Use appropriate socket family based on platform
     if sys.platform.startswith('win'):
         stick_family = socket.AF_INET
-        stick_addr = ('127.0.0.1', 53753)
+        # Use port 0 to let OS choose an available port
+        stick_addr = ('127.0.0.1', 0)
     else:
         stick_family = socket.AF_UNIX
 

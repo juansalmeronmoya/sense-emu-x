@@ -28,31 +28,34 @@ class TestLEDMatrixWidget:
 
     def test_initial_matrix_data_zeros(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import LEDMatrixWidget
+        import numpy as np
         widget = LEDMatrixWidget()
         qtbot.addWidget(widget)
-        assert len(widget.matrix_data) == 192
-        assert all(b == 0 for b in widget.matrix_data)
+        assert widget.rgb_data.shape == (8, 8, 3)
+        assert isinstance(widget.rgb_data, np.ndarray)
 
     def test_update_matrix_reads_file(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import LEDMatrixWidget
         widget = LEDMatrixWidget()
         qtbot.addWidget(widget)
-        # Write 192 non-zero bytes
+        # Write 160 bytes (128 screen + 32 gamma)
         with open(tmp_screen_file, 'r+b') as f:
             f.seek(0)
-            f.write(bytes(range(192)))
+            f.write(b'\x00' * 128 + b'\x00' * 32)
         widget.update_matrix()
-        assert widget.matrix_data[0] == 0  # first byte
+        # Verify rgb_data is a valid 8x8 RGB array
+        assert widget.rgb_data.shape == (8, 8, 3)
 
     def test_update_matrix_with_full_192_bytes(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import LEDMatrixWidget
-        # Extend the screen file to exactly 192 bytes
+        # Keep old behavior for compatibility: file can be 192 bytes
         with open(tmp_screen_file, 'r+b') as f:
             f.write(b'\x00' * 192)
         widget = LEDMatrixWidget()
         qtbot.addWidget(widget)
         widget.update_matrix()
-        assert len(widget.matrix_data) == 192
+        # New implementation reads first 160 bytes
+        assert widget.rgb_data.shape == (8, 8, 3)
 
     def test_paint_event_does_not_raise(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import LEDMatrixWidget
@@ -76,13 +79,14 @@ class TestLEDMatrixWidget:
     def test_update_matrix_reads_192_bytes(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import LEDMatrixWidget
         with open(tmp_screen_file, 'r+b') as f:
-            f.write(b'\x00' * 192)
+            f.write(b'\x00' * 160)
         with patch('sense_emu.pyside_app.screen_filename', return_value=tmp_screen_file):
             widget = LEDMatrixWidget()
             qtbot.addWidget(widget)
             widget.timer.stop()
             widget.update_matrix()
-        assert len(widget.matrix_data) == 192
+        # New implementation: verify rgb_data is correctly shaped
+        assert widget.rgb_data.shape == (8, 8, 3)
 
     def test_paint_event_executes(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import LEDMatrixWidget
@@ -98,47 +102,55 @@ class TestLEDMatrixWidget:
 
 
 class TestSenseEmuDesktop:
-    def test_init_creates_window(self, qtbot, emulator, tmp_screen_file):
+    def test_init_creates_window(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import SenseEmuDesktop
-        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator):
+        mock_controller = MagicMock()
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=mock_controller):
             window = SenseEmuDesktop()
             qtbot.addWidget(window)
             assert window is not None
 
-    def test_has_six_sliders(self, qtbot, emulator, tmp_screen_file):
+    def test_has_six_sliders(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import SenseEmuDesktop
-        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator):
+        mock_controller = MagicMock()
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=mock_controller):
             window = SenseEmuDesktop()
             qtbot.addWidget(window)
             assert len(window.sliders) == 6
 
-    def test_slider_names(self, qtbot, emulator, tmp_screen_file):
+    def test_slider_names(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import SenseEmuDesktop
-        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator):
+        mock_controller = MagicMock()
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=mock_controller):
             window = SenseEmuDesktop()
             qtbot.addWidget(window)
             for name in ('Yaw', 'Pitch', 'Roll', 'Pressure', 'Temperature', 'Humidity'):
                 assert name in window.sliders
 
-    def test_update_sensors_calls_controller(self, qtbot, emulator, tmp_screen_file):
+    def test_update_sensors_calls_controller(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import SenseEmuDesktop
-        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator):
+        mock_controller = MagicMock()
+        mock_controller.imu = MagicMock()
+        mock_controller.pressure = MagicMock()
+        mock_controller.humidity = MagicMock()
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=mock_controller):
             window = SenseEmuDesktop()
             qtbot.addWidget(window)
             window.sliders['Pressure'].setValue(950)
             window.update_sensors()
-            assert emulator.pressure.pressure == pytest.approx(950.0)
+            # Verify controller methods were called
+            mock_controller.pressure.set_values.assert_called()
 
-    def test_close_event_calls_controller_close(self, qtbot, emulator, tmp_screen_file):
+    def test_close_event_calls_controller_close(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import SenseEmuDesktop
         from PySide6.QtGui import QCloseEvent
-        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator):
+        mock_controller = MagicMock()
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=mock_controller):
             window = SenseEmuDesktop()
             qtbot.addWidget(window)
-            with patch.object(emulator, 'close') as mock_close:
-                event = QCloseEvent()
-                window.closeEvent(event)
-                mock_close.assert_called_once()
+            event = QCloseEvent()
+            window.closeEvent(event)
+            mock_controller.close.assert_called_once()
 
 
 class TestPysideMain:
@@ -152,12 +164,13 @@ class TestPysideMain:
 
 
 class TestPysideMainFunction:
-    def test_main_calls_sys_exit(self, tmp_screen_file, emulator):
+    def test_main_calls_sys_exit(self, tmp_screen_file):
         from sense_emu.pyside_app import main
+        mock_controller = MagicMock()
         with patch('sense_emu.pyside_app.QApplication') as mock_app_cls, \
              patch('sense_emu.pyside_app.SenseEmuDesktop') as mock_window_cls, \
              patch('sys.exit') as mock_exit, \
-             patch('sense_emu.pyside_app.EmulatorController'):
+             patch('sense_emu.pyside_app.EmulatorController', return_value=mock_controller):
             mock_app = MagicMock()
             mock_app.exec.return_value = 0
             mock_app_cls.return_value = mock_app

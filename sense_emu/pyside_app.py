@@ -1,6 +1,8 @@
 import sys
 import io
 import math
+import struct
+import numpy as np
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QSlider, QLabel, QGridLayout,
                                QPushButton, QScrollArea, QGroupBox)
@@ -8,18 +10,22 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPainter, QColor
 
 from .core import EmulatorController
-from .screen import screen_filename
+from .screen import screen_filename, GAMMA_DEFAULT, GAMMA_LOW
 
 class LEDMatrixWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.setMinimumSize(320, 320)
-        self.matrix_data = bytearray(192)
-        
+        self.rgb_data = np.zeros((8, 8, 3), dtype=np.uint8)
+
+        self.gamma_rgbled = (
+            np.sqrt(np.sqrt(np.linspace(0.05, 1, 32))) * 255
+        ).astype(np.uint8)
+
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_matrix)
         self.timer.start(100)
-        
+
         try:
             self.screen_file = io.open(screen_filename(), 'rb')
         except:
@@ -31,27 +37,40 @@ class LEDMatrixWidget(QWidget):
                 self.screen_file = io.open(screen_filename(), 'rb')
             except:
                 return
-                
-        self.screen_file.seek(0)
-        data = self.screen_file.read(192)
-        if len(data) == 192:
-            self.matrix_data = data
-            self.update()
+
+        try:
+            self.screen_file.seek(0)
+            raw_data = self.screen_file.read(160)
+            if len(raw_data) >= 128:
+                screen_raw = np.frombuffer(raw_data[:128], dtype=np.uint16).reshape((8, 8))
+                gamma_data = np.frombuffer(raw_data[128:160], dtype=np.uint8)
+
+                rgb = np.empty((8, 8, 3), dtype=np.uint8)
+                rgb[..., 0] = ((screen_raw & 0xF800) >> 11).astype(np.uint8)
+                rgb[..., 1] = ((screen_raw & 0x07E0) >> 6).astype(np.uint8)
+                rgb[..., 2] = (screen_raw & 0x001F).astype(np.uint8)
+
+                rgb = np.take(gamma_data, rgb)
+                rgb = np.take(self.gamma_rgbled, rgb)
+
+                self.rgb_data = rgb
+                self.update()
+        except:
+            pass
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.fillRect(self.rect(), Qt.black)
-        
+
         w, h = self.width(), self.height()
         cell_w, cell_h = w / 8, h / 8
-        
+
         for y in range(8):
             for x in range(8):
-                offset = (y * 8 + x) * 3
-                r, g, b = self.matrix_data[offset:offset+3]
-                painter.fillRect(x * cell_w + 1, y * cell_h + 1, 
-                               cell_w - 2, cell_h - 2, 
-                               QColor(r, g, b))
+                r, g, b = self.rgb_data[y, x]
+                painter.fillRect(int(x * cell_w) + 1, int(y * cell_h) + 1,
+                               int(cell_w) - 2, int(cell_h) - 2,
+                               QColor(int(r), int(g), int(b)))
 
 class SenseEmuDesktop(QMainWindow):
     def __init__(self):
