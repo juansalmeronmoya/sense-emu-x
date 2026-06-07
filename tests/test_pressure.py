@@ -93,3 +93,54 @@ class TestPressurePerturb:
         for _ in range(100):
             result = server._perturb(1000.0, 1.0)
             assert abs(result - 1000.0) < 2.0  # ±0.2 * 1.0 Gauss, 3σ ~ 0.6
+
+
+from unittest.mock import patch
+import os
+from sense_emu.pressure import (
+    pressure_filename, init_pressure, PressureServer,
+    PRESSURE_DATA, PressureData, PRESSURE_FACTOR, TEMP_FACTOR, TEMP_OFFSET
+)
+
+
+class TestPressureFilename:
+    def test_direct_call_returns_string(self):
+        result = pressure_filename()
+        assert isinstance(result, str)
+        assert 'rpi-sense-emu-pressure' in result
+
+    def test_no_shm_uses_tmp(self):
+        with patch('os.path.exists', return_value=False):
+            result = pressure_filename()
+        assert result == '/tmp/rpi-sense-emu-pressure'
+
+    def test_windows_path(self):
+        with patch('sys.platform', 'win32'), \
+             patch.dict('os.environ', {'TEMP': '/tmp/wintemp'}):
+            result = pressure_filename()
+        assert 'rpi-sense-emu-pressure' in result
+
+
+class TestInitPressure:
+    def test_creates_file_when_missing(self, tmp_path):
+        path = str(tmp_path / 'new_pressure')
+        with patch('sense_emu.pressure.pressure_filename', return_value=path):
+            fd = init_pressure()
+        assert os.path.exists(path)
+        fd.close()
+
+
+class TestPressureServerAlreadyInitialized:
+    def test_reads_existing_type3_data(self, tmp_path):
+        path = str(tmp_path / 'pressure')
+        pressure = 1013.0
+        temperature = 20.0
+        p_out = int(pressure * PRESSURE_FACTOR)
+        t_out = int((temperature - TEMP_OFFSET) * TEMP_FACTOR)
+        data = PressureData(3, b'LPS25', 0, p_out, t_out, 1, 1)
+        with open(path, 'wb') as f:
+            f.write(PRESSURE_DATA.pack(*data))
+        with patch('sense_emu.pressure.pressure_filename', return_value=path):
+            server = PressureServer(simulate_noise=False)
+        assert server._pressure == pytest.approx(pressure, rel=0.01)
+        server.close()

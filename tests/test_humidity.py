@@ -91,3 +91,52 @@ class TestHumidityPerturb:
         for _ in range(50):
             result = server._perturb(50.0, 1.0)
             assert abs(result - 50.0) < 2.0
+
+
+from unittest.mock import patch
+import os
+from sense_emu.humidity import (
+    humidity_filename, init_humidity, HumidityServer,
+    HUMIDITY_DATA, HumidityData, HUMIDITY_FACTOR, TEMP_FACTOR
+)
+
+
+class TestHumidityFilename:
+    def test_direct_call_returns_string(self):
+        result = humidity_filename()
+        assert isinstance(result, str)
+        assert 'rpi-sense-emu-humidity' in result
+
+    def test_no_shm_uses_tmp(self):
+        with patch('os.path.exists', return_value=False):
+            result = humidity_filename()
+        assert result == '/tmp/rpi-sense-emu-humidity'
+
+    def test_windows_path(self):
+        with patch('sys.platform', 'win32'), \
+             patch.dict('os.environ', {'TEMP': '/tmp/wintemp'}):
+            result = humidity_filename()
+        assert 'rpi-sense-emu-humidity' in result
+
+
+class TestInitHumidity:
+    def test_creates_file_when_missing(self, tmp_path):
+        path = str(tmp_path / 'new_humidity')
+        with patch('sense_emu.humidity.humidity_filename', return_value=path):
+            fd = init_humidity()
+        assert os.path.exists(path)
+        fd.close()
+
+
+class TestHumidityServerAlreadyInitialized:
+    def test_reads_existing_type2_data(self, tmp_path):
+        path = str(tmp_path / 'humidity')
+        # Write a file already initialized with type=2 and valid data
+        data = HumidityData(2, b'HTS22', 0, 100, 0, 100, 0, 25600, 0, 6400,
+                            int(45.0 * HUMIDITY_FACTOR), int(20.0 * TEMP_FACTOR), 1, 1)
+        with open(path, 'wb') as f:
+            f.write(HUMIDITY_DATA.pack(*data))
+        with patch('sense_emu.humidity.humidity_filename', return_value=path):
+            server = HumidityServer(simulate_noise=False)
+        assert server._humidity == pytest.approx(45.0, abs=1.0)
+        server.close()

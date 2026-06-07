@@ -91,3 +91,85 @@ class TestScreenClientClose:
         c.close()
         # should not raise
         c.close()
+
+
+from unittest.mock import patch, MagicMock
+from sense_emu.screen import screen_filename, init_screen, ScreenClient
+
+
+class TestScreenFilenameExtended:
+    def test_no_shm_uses_tmp(self):
+        with patch('os.path.exists', return_value=False):
+            result = screen_filename()
+        assert result == '/tmp/rpi-sense-emu-screen'
+
+    def test_windows_path(self):
+        with patch('sys.platform', 'win32'), \
+             patch.dict('os.environ', {'TEMP': '/tmp/wintemp'}):
+            result = screen_filename()
+        assert 'rpi-sense-emu-screen' in result
+
+
+class TestInitScreen:
+    def test_creates_file_when_missing(self, tmp_path):
+        path = str(tmp_path / 'new_screen')
+        with patch('sense_emu.screen.screen_filename', return_value=path):
+            fd = init_screen()
+        assert os.path.exists(path)
+        assert fd.seek(0, 2) >= 160  # at least 160 bytes
+        fd.close()
+
+
+class TestTouchRunFallback:
+    def test_touch_run_without_fd_support(self, tmp_screen_file):
+        """Cover the NotImplementedError fallback path in _touch_run."""
+        c = ScreenClient()
+        # Stop the background thread
+        c._touch_stop.set()
+        c._touch_thread.join()
+        c._touch_thread = None
+
+        # Patch supports_fd to be empty so os.utime not in os.supports_fd
+        c._touch_stop.clear()
+        c._touch_stop.set()  # set immediately so while loop exits
+        with patch('os.supports_fd', new=frozenset()):
+            c._touch_run()
+
+        # Properly close: clear numpy refs first to avoid BufferError
+        c._screen = None
+        c._gamma = None
+        c._map.close()
+        c._fd.close()
+        c._fd = None
+        c._map = None
+
+    def test_touch_run_loop_executes(self, tmp_screen_file):
+        """Cover the while loop body in _touch_run."""
+        c = ScreenClient()
+        c._touch_stop.set()
+        c._touch_thread.join()
+        c._touch_thread = None
+
+        # Mock _touch_stop.wait to return False once (enter loop) then True (exit)
+        responses = iter([False, True])
+        orig_wait = c._touch_stop.wait
+
+        def mock_wait(timeout=None):
+            try:
+                return next(responses)
+            except StopIteration:
+                return True
+
+        c._touch_stop.wait = mock_wait
+        c._touch_run()  # should execute loop body once (line 126)
+
+        # Restore for proper cleanup
+        c._touch_stop.wait = orig_wait
+        c._touch_stop.set()
+        # Properly close: clear numpy refs first to avoid BufferError
+        c._screen = None
+        c._gamma = None
+        c._map.close()
+        c._fd.close()
+        c._fd = None
+        c._map = None
