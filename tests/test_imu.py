@@ -141,3 +141,68 @@ class TestWorldState:
         data = server._read()
         expected = int(math.radians(45.0) * ORIENT_FACTOR)
         assert abs(data.orient[0] - expected) <= 2
+
+
+import numpy as np
+from unittest.mock import patch
+import os
+from sense_emu.imu import (
+    imu_filename, init_imu, IMUServer, IMU_DATA, IMUData,
+    ACCEL_FACTOR, GYRO_FACTOR, COMPASS_FACTOR, timestamp,
+    V, O,
+)
+
+
+class TestImuFilenameExtended:
+    def test_no_shm_uses_tmp(self):
+        with patch('os.path.exists', return_value=False):
+            result = imu_filename()
+        assert result == '/tmp/rpi-sense-emu-imu'
+
+    def test_windows_path(self):
+        with patch('sys.platform', 'win32'), \
+             patch.dict('os.environ', {'TEMP': '/tmp/wintemp'}):
+            result = imu_filename()
+        assert 'rpi-sense-emu-imu' in result
+
+
+class TestInitImu:
+    def test_creates_file_when_missing(self, tmp_path):
+        path = str(tmp_path / 'new_imu')
+        with patch('sense_emu.imu.imu_filename', return_value=path):
+            fd = init_imu()
+        assert os.path.exists(path)
+        fd.close()
+
+
+class TestIMUServerExtended:
+    def test_already_initialized_branch(self, tmp_path):
+        path = str(tmp_path / 'imu')
+        accel = V(0.0, 0.0, 1.0) * ACCEL_FACTOR
+        gyro_val = V(0.01, 0.0, 0.0) * GYRO_FACTOR
+        compass = V(0.33, 0.0, 0.0) * COMPASS_FACTOR
+        with open(path, 'wb') as f:
+            f.write(IMU_DATA.pack(
+                6, b'LSM9DS1', timestamp(),
+                int(accel[0]), int(accel[1]), int(accel[2]),
+                int(gyro_val[0]), int(gyro_val[1]), int(gyro_val[2]),
+                int(compass[0]), int(compass[1]), int(compass[2]),
+                0, 0, 0,
+            ))
+        with patch('sense_emu.imu.imu_filename', return_value=path):
+            server = IMUServer(simulate_world=False)
+        server.close()
+
+    def test_gyro_property(self, server):
+        val = server.gyro
+        assert val is not None
+
+    def test_compass_property(self, server):
+        val = server.compass
+        assert val is not None
+
+    def test_set_orientation_simulate_world_true(self, tmp_imu_file):
+        server = IMUServer(simulate_world=True)
+        server.set_orientation((10.0, 20.0, 30.0))
+        np.testing.assert_array_almost_equal(server.orientation, [10.0, 20.0, 30.0])
+        server.close()

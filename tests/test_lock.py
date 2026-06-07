@@ -152,3 +152,41 @@ class TestPidExistsEPERM:
         with patch('os.kill', side_effect=OSError(errno.EPERM, 'not permitted')):
             from sense_emu.lock import pid_exists
             assert pid_exists(1) is True
+
+
+import errno
+from sense_emu.lock import pid_exists, lock_filename, EmulatorLock
+
+
+class TestPidExistsRaise:
+    def test_raises_on_unexpected_oserror(self):
+        with patch('os.kill', side_effect=OSError(errno.EACCES, 'permission denied')):
+            with pytest.raises(OSError):
+                pid_exists(1)
+
+
+class TestLockFilenameWindowsExtended:
+    def test_windows_path(self):
+        with patch('sys.platform', 'win32'), \
+             patch.dict('os.environ', {'TEMP': '/tmp/wintemp'}):
+            result = lock_filename()
+        assert 'rpi-sense-emu-pid' in result
+
+
+class TestLockWaitNoneTimeout:
+    def test_wait_none_timeout_returns_true_if_held(self, tmp_lock_file):
+        import os
+        with open(tmp_lock_file, 'w') as f:
+            f.write('%d\n' % os.getpid())
+        lock = EmulatorLock('test')
+        result = lock.wait(timeout=None)
+        assert result is True
+        lock.release()
+
+
+class TestBreakLockRaises:
+    def test_break_lock_reraises_non_enoent(self, tmp_lock_file):
+        lock = EmulatorLock('test')
+        with patch('os.unlink', side_effect=OSError(errno.EACCES, 'denied')):
+            with pytest.raises(OSError):
+                lock._break_lock()
