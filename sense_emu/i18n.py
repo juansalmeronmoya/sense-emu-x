@@ -17,20 +17,29 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>
 
 import sys
+import os
 import locale
 import gettext as _gettext
 import atexit
 
-import pkg_resources
+try:
+    # Python 3.9+
+    from importlib.resources import files
+except ImportError:
+    # Python 3.8
+    from importlib_resources import files
 
 from . import __project__
 
 def init_i18n(languages=None):
-    # Ensure any resources we extract get cleaned up interpreter shutdown
-    atexit.register(pkg_resources.cleanup_resources)
-    # Figure out where the language catalogs are; this will extract them
-    # if the package is frozen
-    localedir = pkg_resources.resource_filename(__name__, 'locale')
+    # Figure out where the language catalogs are
+    try:
+        # Python 3.9+
+        locale_pkg = files('sense_emu').joinpath('locale')
+        localedir = str(locale_pkg)
+    except (AttributeError, TypeError):
+        # Fallback: use the filesystem directly
+        localedir = os.path.join(os.path.dirname(__file__), 'locale')
     try:
         # Use the user's default locale instead of C
         locale.setlocale(locale.LC_ALL, '')
