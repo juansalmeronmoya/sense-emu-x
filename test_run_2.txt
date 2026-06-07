@@ -1,0 +1,218 @@
+..................................................................FFFF.. [ 16%]
+.........................F.FF.............................F............. [ 33%]
+.......FF............................................................... [ 50%]
+........................................................................ [ 67%]
+............................FFF..............F.......................... [ 84%]
+...........F........................................................
+ERROR: Coverage failure: total of 92 is less than fail-under=95
+                                                                         [100%]
+============================== warnings summary ===============================
+sense_emu\i18n.py:24
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\i18n.py:24: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+    import pkg_resources
+
+venv\Lib\site-packages\pkg_resources\__init__.py:2832
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\pkg_resources\__init__.py:2832: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('sphinxcontrib')`.
+  Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+    declare_namespace(pkg)
+
+sense_emu\terminal.py:108
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\terminal.py:108: DeprecationWarning: 'locale.getdefaultlocale' is deprecated and slated for removal in Python 3.15. Use setlocale(), getencoding() and getlocale() instead.
+    encoding = locale.getdefaultlocale()[1]
+
+tests/test_sense_hat.py: 98 warnings
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\sense_hat.py:428: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    pixel_list = list(map(list, img.getdata()))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_left_setter
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-69 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_left_setter
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-67 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_left_setter
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-68 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_right_setter
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-70 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_middle_setter
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-71 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_any_setter
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-72 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_set_callback_to_none_removes
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-73 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.13.13-final-0 _______________
+
+Name                       Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------
+sense_emu\RTIMU.py           111      0     10      0   100%
+sense_emu\__init__.py         17      2      2      1    84%   75-79
+sense_emu\common.py           21      0      6      2    93%   74->78, 75->74
+sense_emu\core.py             25      0      0      0   100%
+sense_emu\dump.py             41      0     10      0   100%
+sense_emu\humidity.py        106      4     20      2    94%   74-77, 101
+sense_emu\i18n.py             32      7      2      1    76%   46, 57-66
+sense_emu\imu.py             154      6     22      2    94%   67-70, 93, 101-102
+sense_emu\lock.py             99     18     32      5    76%   42, 46, 50, 54-67, 82-85
+sense_emu\play.py             62      0     16      2    97%   81->83, 95->97
+sense_emu\pressure.py        107      4     20      2    94%   66-69, 93
+sense_emu\pyside_app.py       92      1     10      1    98%   121
+sense_emu\pyside_main.py       3      1      2      1    60%   3
+sense_emu\record.py           75      2     22      2    96%   88, 93
+sense_emu\screen.py           75      5     10      2    89%   51-54, 72, 120
+sense_emu\sense_hat.py       429     35    130      2    93%   78-145, 206, 214
+sense_emu\stick.py           237     28     64     11    83%   85-88, 106-114, 116, 126-128, 269->267, 289->exit, 291->289, 416-419, 434-436, 448-452, 459, 462->exit
+sense_emu\terminal.py        138      1     52      2    98%   187, 188->205
+sense_emu\tui.py              86      1     18      1    98%   105
+----------------------------------------------------------------------
+TOTAL                       1910    115    448     39    92%
+FAIL Required test coverage of 95% not reached. Total coverage: 92.11%
+=========================== short test summary info ===========================
+FAILED tests/test_dump.py::TestDumpMain::test_generates_csv_rows - AssertionE...
+FAILED tests/test_dump.py::TestDumpMain::test_header_flag_adds_header_row - A...
+FAILED tests/test_dump.py::TestDumpMain::test_csv_has_correct_column_count - ...
+FAILED tests/test_dump.py::TestDumpMain::test_custom_timestamp_format - Value...
+FAILED tests/test_i18n.py::TestInitI18n::test_init_recovers_from_missing_bindtextdomain
+FAILED tests/test_i18n.py::TestInitI18n::test_init_recovers_windows_intl_missing
+FAILED tests/test_i18n.py::TestInitI18n::test_init_windows_intl_unavailable
+FAILED tests/test_lock.py::TestPidExists::test_pid_zero - assert False is True
+FAILED tests/test_lock.py::TestPidExistsEPERM::test_eperm_means_exists - asse...
+FAILED tests/test_lock.py::TestPidExistsRaise::test_raises_on_unexpected_oserror
+FAILED tests/test_sense_hat.py::TestSenseHatInit::test_full_init - AttributeE...
+FAILED tests/test_sense_hat.py::TestSenseHatInit::test_init_when_lock_not_held_spawns_gui
+FAILED tests/test_sense_hat.py::TestSenseHatInit::test_init_no_fb_device_raises
+FAILED tests/test_stick.py::TestStickAddress::test_returns_three_tuple - Asse...
+FAILED tests/test_stick.py::TestStickServerServe::test_serve_receives_hello_and_sends_data
+15 failed, 413 passed, 108 warnings in 9.91s

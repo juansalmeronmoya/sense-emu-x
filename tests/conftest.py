@@ -76,10 +76,16 @@ def tmp_lock_file(tmp_path):
 @pytest.fixture
 def tmp_stick_addr(tmp_path):
     import socket
+    import sys
     addr = str(tmp_path / 'stick')
+    if sys.platform.startswith('win'):
+        stick_family = socket.AF_INET
+        addr = ('127.0.0.1', 53753)
+    else:
+        stick_family = socket.AF_UNIX
     with patch(
         'sense_emu.stick.stick_address',
-        return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+        return_value=(stick_family, socket.SOCK_DGRAM, addr),
     ):
         yield addr
 
@@ -99,7 +105,15 @@ def emulator(tmp_path):
     )
     lock_path = str(tmp_path / 'lock')
     import socket
+    import sys
     stick_addr = str(tmp_path / 'stick')
+
+    # Use appropriate socket family based on platform
+    if sys.platform.startswith('win'):
+        stick_family = socket.AF_INET
+        stick_addr = ('127.0.0.1', 53753)
+    else:
+        stick_family = socket.AF_UNIX
 
     patches = [
         patch('sense_emu.pressure.pressure_filename', return_value=pressure_path),
@@ -108,7 +122,7 @@ def emulator(tmp_path):
         patch('sense_emu.screen.screen_filename',     return_value=screen_path),
         patch('sense_emu.lock.lock_filename',         return_value=lock_path),
         patch('sense_emu.stick.stick_address',
-              return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+              return_value=(stick_family, socket.SOCK_DGRAM, stick_addr)),
     ]
     for p in patches:
         p.start()

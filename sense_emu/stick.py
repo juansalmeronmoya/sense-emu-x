@@ -31,6 +31,8 @@ from threading import Thread, Event
 from queue import Queue, Empty
 from time import sleep
 
+AF_UNIX = getattr(socket, 'AF_UNIX', None)
+
 
 DIRECTION_UP     = 'up'
 DIRECTION_DOWN   = 'down'
@@ -81,9 +83,9 @@ def stick_address():
     else:
         # use UNIX sockets everywhere else
         if os.path.exists('/dev/shm'):
-            return (socket.AF_UNIX, socket.SOCK_DGRAM, os.path.join('/dev/shm', fname))
+            return (AF_UNIX, socket.SOCK_DGRAM, os.path.join('/dev/shm', fname))
         else:
-            return (socket.AF_UNIX, socket.SOCK_DGRAM, os.path.join('/tmp', fname))
+            return (AF_UNIX, socket.SOCK_DGRAM, os.path.join('/tmp', fname))
 
 
 def init_stick_client():
@@ -101,7 +103,7 @@ def init_stick_client():
     client = socket.socket(family, sock_type)
     if family == socket.AF_INET:
         client.bind(('127.0.0.1', 0))
-    elif family == socket.AF_UNIX:
+    elif family == AF_UNIX:
         fname = 'rpi-sense-emu-client-%d' % os.getpid()
         addr_path = os.path.dirname(addr)
         try:
@@ -410,7 +412,7 @@ class StickServer:
     def __init__(self):
         family, sock_type, addr = stick_address()
         server = socket.socket(family, sock_type)
-        if family == socket.AF_UNIX:
+        if family == AF_UNIX:
             try:
                 # Kill any pre-existing socket
                 os.unlink(addr)
@@ -452,7 +454,7 @@ class StickServer:
             family = server.family
             addr = server.getsockname()
             server.close()
-            if family == socket.AF_UNIX:
+            if family == AF_UNIX:
                 # Only works because socket name is guaranteed to be absolute
                 os.unlink(addr)
 

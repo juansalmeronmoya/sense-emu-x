@@ -1,0 +1,314 @@
+..................................................................FFFF.. [ 16%]
+...............F.........F.FF....................F........F............. [ 33%]
+.......FF...........................F................................... [ 50%]
+.........F....EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE [ 67%]
+EEEEEEEEEEEEEEEEEEEEEEEEEEEEFFFEEEEEEEEEE....F.......................... [ 84%]
+...........F........................................................
+ERROR: Coverage failure: total of 75 is less than fail-under=95
+                                                                         [100%]
+============================== warnings summary ===============================
+sense_emu\i18n.py:24
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\i18n.py:24: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+    import pkg_resources
+
+venv\Lib\site-packages\pkg_resources\__init__.py:2832
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\pkg_resources\__init__.py:2832: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('sphinxcontrib')`.
+  Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+    declare_namespace(pkg)
+
+sense_emu\terminal.py:108
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\terminal.py:108: DeprecationWarning: 'locale.getdefaultlocale' is deprecated and slated for removal in Python 3.15. Use setlocale(), getencoding() and getlocale() instead.
+    encoding = locale.getdefaultlocale()[1]
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_left_setter
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-68 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_left_setter
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-67 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_left_setter
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-69 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_right_setter
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-70 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_middle_setter
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-71 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_any_setter
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-72 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_set_callback_to_none_removes
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-73 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 268, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 191, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.13.13-final-0 _______________
+
+Name                       Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------
+sense_emu\RTIMU.py           111      0     10      0   100%
+sense_emu\__init__.py         17      2      2      1    84%   75-79
+sense_emu\common.py           21      0      6      2    93%   74->78, 75->74
+sense_emu\core.py             25      0      0      0   100%
+sense_emu\dump.py             41      0     10      0   100%
+sense_emu\humidity.py        106      4     20      2    94%   74-77, 101
+sense_emu\i18n.py             32      7      2      1    76%   46, 57-66
+sense_emu\imu.py             154      6     22      2    94%   67-70, 93, 101-102
+sense_emu\lock.py             99     18     32      5    76%   42, 46, 50, 54-67, 82-85
+sense_emu\play.py             62      0     16      2    97%   81->83, 95->97
+sense_emu\pressure.py        107      4     20      2    94%   66-69, 93
+sense_emu\pyside_app.py       92      1     10      1    98%   121
+sense_emu\pyside_main.py       3      1      2      1    60%   3
+sense_emu\record.py           75      2     22      2    96%   88, 93
+sense_emu\screen.py           75      5     10      2    89%   51-54, 72, 120
+sense_emu\sense_hat.py       429    322    130      0    19%   78-145, 163-171, 179-193, 201-216, 223-226, 237, 245, 249, 257-264, 271-275, 282-287, 294-301, 308-315, 324-340, 348-356, 369-394, 402-416, 424-433, 447-458, 466-469, 485-511, 524-541, 545-547, 551-562, 568, 572, 576-579, 590-593, 600-603, 610-615, 619, 626-631, 638-643, 650, 654, 658, 665-670, 674, 685-692, 728-738, 745-757, 765-773, 777, 786-790, 793, 797, 836-837, 841, 845, 852-857, 861, 865, 872-873, 877, 881, 888-893, 897, 901
+sense_emu\stick.py           237     28     64     11    83%   85-88, 106-114, 116, 126-128, 269->267, 289->exit, 291->289, 416-419, 434-436, 448-452, 459, 462->exit
+sense_emu\terminal.py        138      1     52      2    98%   187, 188->205
+sense_emu\tui.py              86      1     18      1    98%   105
+----------------------------------------------------------------------
+TOTAL                       1910    402    448     37    75%
+FAIL Required test coverage of 95% not reached. Total coverage: 74.68%
+=========================== short test summary info ===========================
+FAILED tests/test_dump.py::TestDumpMain::test_generates_csv_rows - AssertionE...
+FAILED tests/test_dump.py::TestDumpMain::test_header_flag_adds_header_row - A...
+FAILED tests/test_dump.py::TestDumpMain::test_csv_has_correct_column_count - ...
+FAILED tests/test_dump.py::TestDumpMain::test_custom_timestamp_format - Value...
+FAILED tests/test_humidity.py::TestHumidityFilename::test_no_shm_uses_tmp - A...
+FAILED tests/test_i18n.py::TestInitI18n::test_init_recovers_from_missing_bindtextdomain
+FAILED tests/test_i18n.py::TestInitI18n::test_init_recovers_windows_intl_missing
+FAILED tests/test_i18n.py::TestInitI18n::test_init_windows_intl_unavailable
+FAILED tests/test_imu.py::TestImuFilenameExtended::test_no_shm_uses_tmp - Ass...
+FAILED tests/test_lock.py::TestPidExists::test_pid_zero - assert False is True
+FAILED tests/test_lock.py::TestPidExistsEPERM::test_eperm_means_exists - asse...
+FAILED tests/test_lock.py::TestPidExistsRaise::test_raises_on_unexpected_oserror
+FAILED tests/test_pressure.py::TestPressureFilename::test_no_shm_uses_tmp - A...
+FAILED tests/test_screen.py::TestScreenFilenameExtended::test_no_shm_uses_tmp
+FAILED tests/test_sense_hat.py::TestSenseHatInit::test_full_init - AttributeE...
+FAILED tests/test_sense_hat.py::TestSenseHatInit::test_init_when_lock_not_held_spawns_gui
+FAILED tests/test_sense_hat.py::TestSenseHatInit::test_init_no_fb_device_raises
+FAILED tests/test_stick.py::TestStickAddress::test_returns_three_tuple - Asse...
+FAILED tests/test_stick.py::TestStickServerServe::test_serve_receives_hello_and_sends_data
+ERROR tests/test_sense_hat.py::TestPackUnpack::test_pack_bin_roundtrip - Attr...
+ERROR tests/test_sense_hat.py::TestPackUnpack::test_pack_black - AttributeErr...
+ERROR tests/test_sense_hat.py::TestPackUnpack::test_unpack_zero_is_black - At...
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_and_get_pixel - ...
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixel_tuple_form
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixel_x_out_of_range
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixel_y_out_of_range
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixel_invalid_color
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_get_pixel_x_out_of_range
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixels_64_pixels
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixels_wrong_count_raises
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixels_invalid_pixel_raises
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_clear_all_black - At...
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_clear_with_color - A...
+ERROR tests/test_sense_hat.py::TestFlipAndRotate::test_flip_h_reverses_rows
+ERROR tests/test_sense_hat.py::TestFlipAndRotate::test_flip_v_reverses_columns
+ERROR tests/test_sense_hat.py::TestFlipAndRotate::test_set_rotation_valid - A...
+ERROR tests/test_sense_hat.py::TestFlipAndRotate::test_set_rotation_invalid_raises
+ERROR tests/test_sense_hat.py::TestFlipAndRotate::test_rotation_property_setter
+ERROR tests/test_sense_hat.py::TestTextAssets::test_text_dict_loaded - Attrib...
+ERROR tests/test_sense_hat.py::TestTextAssets::test_space_character_present
+ERROR tests/test_sense_hat.py::TestTextAssets::test_get_char_pixels_returns_list
+ERROR tests/test_sense_hat.py::TestTextAssets::test_get_char_pixels_unknown_returns_question_mark
+ERROR tests/test_sense_hat.py::TestGamma::test_gamma_property_returns_tuple
+ERROR tests/test_sense_hat.py::TestGamma::test_gamma_setter - AttributeError:...
+ERROR tests/test_sense_hat.py::TestGamma::test_low_light_setter - AttributeEr...
+ERROR tests/test_sense_hat.py::TestGamma::test_low_light_false_restores_default
+ERROR tests/test_sense_hat.py::TestGamma::test_gamma_reset - AttributeError: ...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_humidity - AttributeErro...
+ERROR tests/test_sense_hat.py::TestSensors::test_humidity_property - Attribut...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_pressure - AttributeErro...
+ERROR tests/test_sense_hat.py::TestSensors::test_pressure_property - Attribut...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_temperature_from_humidity
+ERROR tests/test_sense_hat.py::TestSensors::test_get_temperature_from_pressure
+ERROR tests/test_sense_hat.py::TestSensors::test_get_temperature - AttributeE...
+ERROR tests/test_sense_hat.py::TestSensors::test_temperature_property - Attri...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_orientation_degrees - At...
+ERROR tests/test_sense_hat.py::TestSensors::test_set_imu_config - AttributeEr...
+ERROR tests/test_sense_hat.py::TestSensors::test_stick_property - AttributeEr...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_compass - AttributeError...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_accelerometer_raw - Attr...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_gyroscope_raw - Attribut...
+ERROR tests/test_sense_hat.py::TestSensors::test_rotation_getter - AttributeE...
+ERROR tests/test_sense_hat.py::TestSensors::test_flip_h_with_redraw - Attribu...
+ERROR tests/test_sense_hat.py::TestSensors::test_flip_v_with_redraw - Attribu...
+ERROR tests/test_sense_hat.py::TestSensors::test_set_pixel_invalid_pixel_length
+ERROR tests/test_sense_hat.py::TestSensors::test_set_pixel_wrong_arg_count - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_pixel_y_out_of_range - A...
+ERROR tests/test_sense_hat.py::TestSensors::test_clear_with_single_tuple - At...
+ERROR tests/test_sense_hat.py::TestSensors::test_clear_wrong_args_raises - At...
+ERROR tests/test_sense_hat.py::TestSensors::test_show_letter - AttributeError...
+ERROR tests/test_sense_hat.py::TestSensors::test_show_letter_too_long_raises
+ERROR tests/test_sense_hat.py::TestSensors::test_show_message - AttributeErro...
+ERROR tests/test_sense_hat.py::TestSensors::test_gamma_wrong_length_raises - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_gamma_out_of_range_raises - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_low_light_getter - Attribute...
+ERROR tests/test_sense_hat.py::TestSensors::test_humidity_init_failure_raises
+ERROR tests/test_sense_hat.py::TestSensors::test_pressure_init_failure_raises
+ERROR tests/test_sense_hat.py::TestSensors::test_get_humidity_when_invalid - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_temperature_from_humidity_when_invalid
+ERROR tests/test_sense_hat.py::TestSensors::test_get_temperature_from_pressure_when_invalid
+ERROR tests/test_sense_hat.py::TestSensors::test_get_pressure_when_invalid - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_temp_property - AttributeErr...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_gyroscope - AttributeErr...
+ERROR tests/test_sense_hat.py::TestSensors::test_gyro_property - AttributeErr...
+ERROR tests/test_sense_hat.py::TestSensors::test_gyroscope_property - Attribu...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_gyroscope_raw_when_invalid
+ERROR tests/test_sense_hat.py::TestSensors::test_gyro_raw_property - Attribut...
+ERROR tests/test_sense_hat.py::TestSensors::test_gyroscope_raw_property - Att...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_accelerometer - Attribut...
+ERROR tests/test_sense_hat.py::TestSensors::test_accel_property - AttributeEr...
+ERROR tests/test_sense_hat.py::TestSensors::test_accelerometer_property - Att...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_accelerometer_raw_when_invalid
+ERROR tests/test_sense_hat.py::TestSensors::test_accel_raw_property - Attribu...
+ERROR tests/test_sense_hat.py::TestSensors::test_accelerometer_raw_property
+ERROR tests/test_sense_hat.py::TestSensors::test_orientation_radians_property
+ERROR tests/test_sense_hat.py::TestSensors::test_orientation_property - Attri...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_orientation_radians - At...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_compass_raw - AttributeE...
+ERROR tests/test_sense_hat.py::TestSensors::test_compass_raw_property - Attri...
+ERROR tests/test_sense_hat.py::TestSensors::test_set_imu_config_type_error - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_imu_init_failure_raises_oserror
+ERROR tests/test_sense_hat.py::TestSensors::test_load_image_file_not_found - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_load_image_with_redraw - Att...
+ERROR tests/test_sense_hat.py::TestSensors::test_load_image_without_redraw - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_raw_data_when_read_imu_fails
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_init_humidity_already_initialized
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_init_pressure_already_initialized
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_get_orientation_radians_when_raw_none
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_gamma_setter_with_array_type
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_show_message_no_rotation_adjust
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_show_letter_no_rotation_adjust
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_show_message_with_space_char
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_set_pixels_element_out_of_range
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_get_fb_device
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_get_settings_file
+19 failed, 313 passed, 10 warnings, 96 errors in 9.52s

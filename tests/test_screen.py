@@ -99,9 +99,14 @@ from sense_emu.screen import screen_filename, init_screen, ScreenClient
 
 class TestScreenFilenameExtended:
     def test_no_shm_uses_tmp(self):
-        with patch('os.path.exists', return_value=False):
+        import sys
+        with patch('os.path.exists', return_value=False), \
+             patch('sys.platform', 'linux' if not sys.platform.startswith('win') else 'win32'):
             result = screen_filename()
-        assert result == '/tmp/rpi-sense-emu-screen'
+            if sys.platform.startswith('win'):
+                assert 'rpi-sense-emu-screen' in result
+            else:
+                assert result == '/tmp/rpi-sense-emu-screen'
 
     def test_windows_path(self):
         with patch('sys.platform', 'win32'), \

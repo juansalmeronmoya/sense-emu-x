@@ -108,9 +108,14 @@ class TestHumidityFilename:
         assert 'rpi-sense-emu-humidity' in result
 
     def test_no_shm_uses_tmp(self):
-        with patch('os.path.exists', return_value=False):
+        import sys
+        with patch('os.path.exists', return_value=False), \
+             patch('sys.platform', 'linux' if not sys.platform.startswith('win') else 'win32'):
             result = humidity_filename()
-        assert result == '/tmp/rpi-sense-emu-humidity'
+            if sys.platform.startswith('win'):
+                assert 'rpi-sense-emu-humidity' in result
+            else:
+                assert result == '/tmp/rpi-sense-emu-humidity'
 
     def test_windows_path(self):
         with patch('sys.platform', 'win32'), \

@@ -1,0 +1,1865 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.13, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Scripts\python.exe
+cachedir: .pytest_cache
+PySide6 6.11.1 -- Qt runtime 6.11.1 -- Qt compiled 6.11.1
+rootdir: C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x
+configfile: setup.cfg
+plugins: cov-7.1.0, env-1.6.0, qt-4.5.0
+collecting ... collected 428 items
+
+tests/test_RTIMU.py::TestSettings::test_stores_path PASSED               [  0%]
+tests/test_RTIMU.py::TestRTIMU::test_imu_init_returns_true_when_type_nonzero PASSED [  0%]
+tests/test_RTIMU.py::TestRTIMU::test_imu_get_poll_interval PASSED        [  0%]
+tests/test_RTIMU.py::TestRTIMU::test_imu_read_returns_true_on_new_data PASSED [  0%]
+tests/test_RTIMU.py::TestRTIMU::test_imu_read_false_when_same_timestamp PASSED [  1%]
+tests/test_RTIMU.py::TestRTIMU::test_get_imu_data_returns_dict PASSED    [  1%]
+tests/test_RTIMU.py::TestRTIMU::test_get_accel_returns_tuple PASSED      [  1%]
+tests/test_RTIMU.py::TestRTIMU::test_get_gyro_returns_tuple PASSED       [  1%]
+tests/test_RTIMU.py::TestRTIMU::test_get_compass_returns_tuple PASSED    [  2%]
+tests/test_RTIMU.py::TestRTIMU::test_get_fusion_data_returns_tuple PASSED [  2%]
+tests/test_RTIMU.py::TestRTIMU::test_imu_type_nonzero PASSED             [  2%]
+tests/test_RTIMU.py::TestRTIMU::test_imu_name_is_string PASSED           [  2%]
+tests/test_RTIMU.py::TestRTIMU::test_set_gyro_enable_does_not_raise PASSED [  3%]
+tests/test_RTIMU.py::TestRTIMU::test_set_compass_enable_does_not_raise PASSED [  3%]
+tests/test_RTIMU.py::TestRTIMU::test_set_accel_enable_does_not_raise PASSED [  3%]
+tests/test_RTIMU.py::TestRTIMU::test_imu_read_updates_fusion_pose PASSED [  3%]
+tests/test_RTIMU.py::TestRTPressure::test_pressure_init_true PASSED      [  3%]
+tests/test_RTIMU.py::TestRTPressure::test_pressure_read_returns_values PASSED [  4%]
+tests/test_RTIMU.py::TestRTPressure::test_pressure_read_without_init_returns_zeros PASSED [  4%]
+tests/test_RTIMU.py::TestRTPressure::test_pressure_type_nonzero PASSED   [  4%]
+tests/test_RTIMU.py::TestRTPressure::test_pressure_name_is_string PASSED [  4%]
+tests/test_RTIMU.py::TestRTPressure::test_pressure_caches_read PASSED    [  5%]
+tests/test_RTIMU.py::TestRTHumidity::test_humidity_init_true PASSED      [  5%]
+tests/test_RTIMU.py::TestRTHumidity::test_humidity_read_returns_values PASSED [  5%]
+tests/test_RTIMU.py::TestRTHumidity::test_humidity_read_without_init_returns_zeros PASSED [  5%]
+tests/test_RTIMU.py::TestRTHumidity::test_humidity_type_nonzero PASSED   [  6%]
+tests/test_RTIMU.py::TestRTHumidity::test_humidity_name_is_string PASSED [  6%]
+tests/test_RTIMU.py::TestRTHumidity::test_humidity_caches_read PASSED    [  6%]
+tests/test_RTIMU.py::TestRTHumidityZeroDivision::test_humidity_init_zero_division_returns_false PASSED [  6%]
+tests/test_common.py::TestClamp::test_within_range PASSED                [  7%]
+tests/test_common.py::TestClamp::test_below_min PASSED                   [  7%]
+tests/test_common.py::TestClamp::test_above_max PASSED                   [  7%]
+tests/test_common.py::TestClamp::test_at_min_boundary PASSED             [  7%]
+tests/test_common.py::TestClamp::test_at_max_boundary PASSED             [  7%]
+tests/test_common.py::TestClamp::test_negative_range PASSED              [  8%]
+tests/test_common.py::TestClamp::test_float_values PASSED                [  8%]
+tests/test_common.py::TestClamp::test_parametrized[0-0-0-0] PASSED       [  8%]
+tests/test_common.py::TestClamp::test_parametrized[100-50-200-100] PASSED [  8%]
+tests/test_common.py::TestClamp::test_parametrized[-100--200--50--100] PASSED [  9%]
+tests/test_common.py::TestSlowPi::test_returns_bool PASSED               [  9%]
+tests/test_common.py::TestSlowPi::test_false_on_non_pi PASSED            [  9%]
+tests/test_common.py::TestSlowPi::test_false_when_no_cpuinfo PASSED      [  9%]
+tests/test_common.py::TestSlowPi::test_true_when_bcm2835 PASSED          [ 10%]
+tests/test_common.py::TestSlowPi::test_raises_on_other_ioerror PASSED    [ 10%]
+tests/test_common.py::TestStructs::test_header_rec_roundtrip PASSED      [ 10%]
+tests/test_common.py::TestStructs::test_header_rec_size PASSED           [ 10%]
+tests/test_common.py::TestStructs::test_data_rec_roundtrip PASSED        [ 10%]
+tests/test_common.py::TestStructs::test_data_rec_field_count PASSED      [ 11%]
+tests/test_common.py::TestStructs::test_data_record_namedtuple PASSED    [ 11%]
+tests/test_core.py::TestEmulatorController::test_creates_all_subsystems ERROR [ 11%]
+tests/test_core.py::TestEmulatorController::test_lock_is_held_after_init ERROR [ 11%]
+tests/test_core.py::TestEmulatorController::test_close_releases_lock ERROR [ 12%]
+tests/test_core.py::TestEmulatorController::test_close_imu ERROR         [ 12%]
+tests/test_core.py::TestEmulatorController::test_close_pressure ERROR    [ 12%]
+tests/test_core.py::TestEmulatorController::test_close_humidity ERROR    [ 12%]
+tests/test_core.py::TestEmulatorController::test_close_screen ERROR      [ 13%]
+tests/test_core.py::TestEmulatorController::test_sensor_values_readable ERROR [ 13%]
+tests/test_core.py::TestEmulatorController::test_set_imu_orientation ERROR [ 13%]
+tests/test_core.py::TestEmulatorController::test_set_pressure_values ERROR [ 13%]
+tests/test_core.py::TestEmulatorController::test_set_humidity_values ERROR [ 14%]
+tests/test_core.py::TestEmulatorController::test_duplicate_controller_raises ERROR [ 14%]
+tests/test_dump.py::TestDumpSource::test_source_reads_header_and_records PASSED [ 14%]
+tests/test_dump.py::TestDumpSource::test_source_invalid_magic_raises PASSED [ 14%]
+tests/test_dump.py::TestDumpSource::test_source_bad_version_raises PASSED [ 14%]
+tests/test_dump.py::TestDumpSource::test_source_incomplete_record_raises PASSED [ 15%]
+tests/test_dump.py::TestDumpSource::test_record_fields_count PASSED      [ 15%]
+tests/test_dump.py::TestDumpMain::test_generates_csv_rows FAILED         [ 15%]
+tests/test_dump.py::TestDumpMain::test_header_flag_adds_header_row FAILED [ 15%]
+tests/test_dump.py::TestDumpMain::test_csv_has_correct_column_count FAILED [ 16%]
+tests/test_dump.py::TestDumpMain::test_custom_timestamp_format FAILED    [ 16%]
+tests/test_dump.py::TestDumpMain::test_pressure_values_match_input PASSED [ 16%]
+tests/test_dump.py::TestDumpMain::test_output_to_stdout PASSED           [ 16%]
+tests/test_humidity.py::TestHumidityServerBasic::test_default_humidity PASSED [ 17%]
+tests/test_humidity.py::TestHumidityServerBasic::test_default_temperature PASSED [ 17%]
+tests/test_humidity.py::TestHumidityServerBasic::test_set_values PASSED  [ 17%]
+tests/test_humidity.py::TestHumidityServerBasic::test_values_written_to_mmap PASSED [ 17%]
+tests/test_humidity.py::TestHumidityServerBasic::test_sensor_type_is_set PASSED [ 17%]
+tests/test_humidity.py::TestHumidityServerBasic::test_sensor_name_is_set PASSED [ 18%]
+tests/test_humidity.py::TestHumidityServerBasic::test_extreme_humidity_min PASSED [ 18%]
+tests/test_humidity.py::TestHumidityServerBasic::test_extreme_humidity_max PASSED [ 18%]
+tests/test_humidity.py::TestHumidityServerBasic::test_close_is_idempotent PASSED [ 18%]
+tests/test_humidity.py::TestHumiditySimulateNoise::test_noise_off_by_default_fixture PASSED [ 19%]
+tests/test_humidity.py::TestHumiditySimulateNoise::test_noise_on PASSED  [ 19%]
+tests/test_humidity.py::TestHumiditySimulateNoise::test_enable_then_disable_noise PASSED [ 19%]
+tests/test_humidity.py::TestHumiditySimulateNoise::test_noise_stays_within_tolerance PASSED [ 19%]
+tests/test_humidity.py::TestHumidityPerturb::test_perturb_returns_close_value PASSED [ 20%]
+tests/test_humidity.py::TestHumidityFilename::test_direct_call_returns_string PASSED [ 20%]
+tests/test_humidity.py::TestHumidityFilename::test_no_shm_uses_tmp FAILED [ 20%]
+tests/test_humidity.py::TestHumidityFilename::test_windows_path PASSED   [ 20%]
+tests/test_humidity.py::TestInitHumidity::test_creates_file_when_missing PASSED [ 21%]
+tests/test_humidity.py::TestHumidityServerAlreadyInitialized::test_reads_existing_type2_data PASSED [ 21%]
+tests/test_i18n.py::TestInitI18n::test_init_does_not_raise PASSED        [ 21%]
+tests/test_i18n.py::TestInitI18n::test_gettext_returns_string PASSED     [ 21%]
+tests/test_i18n.py::TestInitI18n::test_underscore_alias PASSED           [ 21%]
+tests/test_i18n.py::TestInitI18n::test_ngettext_singular PASSED          [ 22%]
+tests/test_i18n.py::TestInitI18n::test_ngettext_plural PASSED            [ 22%]
+tests/test_i18n.py::TestInitI18n::test_init_with_locale_error PASSED     [ 22%]
+tests/test_i18n.py::TestInitI18n::test_init_recovers_from_missing_bindtextdomain FAILED [ 22%]
+tests/test_i18n.py::TestInitI18n::test_gettext_identity_for_unknown_string PASSED [ 23%]
+tests/test_i18n.py::TestInitI18n::test_init_recovers_windows_intl_missing FAILED [ 23%]
+tests/test_i18n.py::TestInitI18n::test_init_windows_intl_unavailable FAILED [ 23%]
+tests/test_imu.py::TestTimestamp::test_returns_int PASSED                [ 23%]
+tests/test_imu.py::TestTimestamp::test_increasing PASSED                 [ 24%]
+tests/test_imu.py::TestTimestamp::test_microsecond_resolution PASSED     [ 24%]
+tests/test_imu.py::TestImuFilename::test_returns_string PASSED           [ 24%]
+tests/test_imu.py::TestIMUServerBasic::test_sensor_type_initialized PASSED [ 24%]
+tests/test_imu.py::TestIMUServerBasic::test_sensor_name_initialized PASSED [ 25%]
+tests/test_imu.py::TestIMUServerBasic::test_initial_orientation_zero PASSED [ 25%]
+tests/test_imu.py::TestIMUServerBasic::test_initial_accel_zero PASSED    [ 25%]
+tests/test_imu.py::TestIMUServerBasic::test_set_orientation_stores_value PASSED [ 25%]
+tests/test_imu.py::TestIMUServerBasic::test_set_orientation_with_position PASSED [ 25%]
+tests/test_imu.py::TestIMUServerBasic::test_set_imu_values_direct PASSED [ 26%]
+tests/test_imu.py::TestIMUServerBasic::test_set_imu_values_written_to_mmap PASSED [ 26%]
+tests/test_imu.py::TestIMUServerBasic::test_close_is_idempotent PASSED   [ 26%]
+tests/test_imu.py::TestIMUServerBasic::test_simulate_world_false_by_fixture PASSED [ 26%]
+tests/test_imu.py::TestIMUSimulateWorld::test_simulate_world_starts_thread PASSED [ 27%]
+tests/test_imu.py::TestIMUSimulateWorld::test_enable_then_disable_world PASSED [ 27%]
+tests/test_imu.py::TestIMUSimulateWorld::test_world_updates_timestamp PASSED [ 27%]
+tests/test_imu.py::TestIMUPerturb::test_perturb_vector_close PASSED      [ 27%]
+tests/test_imu.py::TestWorldState::test_accel_matches_gravity_when_flat PASSED [ 28%]
+tests/test_imu.py::TestWorldState::test_orientation_written_in_radians_scaled PASSED [ 28%]
+tests/test_imu.py::TestImuFilenameExtended::test_no_shm_uses_tmp FAILED  [ 28%]
+tests/test_imu.py::TestImuFilenameExtended::test_windows_path PASSED     [ 28%]
+tests/test_imu.py::TestInitImu::test_creates_file_when_missing PASSED    [ 28%]
+tests/test_imu.py::TestIMUServerExtended::test_already_initialized_branch PASSED [ 29%]
+tests/test_imu.py::TestIMUServerExtended::test_gyro_property PASSED      [ 29%]
+tests/test_imu.py::TestIMUServerExtended::test_compass_property PASSED   [ 29%]
+tests/test_imu.py::TestIMUServerExtended::test_set_orientation_simulate_world_true PASSED [ 29%]
+tests/test_lock.py::TestPidExists::test_current_process_exists PASSED    [ 30%]
+tests/test_lock.py::TestPidExists::test_dead_process_does_not_exist PASSED [ 30%]
+tests/test_lock.py::TestPidExists::test_pid_zero FAILED                  [ 30%]
+tests/test_lock.py::TestLockFilename::test_returns_string PASSED         [ 30%]
+tests/test_lock.py::TestEmulatorLock::test_acquire_writes_pid PASSED     [ 31%]
+tests/test_lock.py::TestEmulatorLock::test_release_removes_file PASSED   [ 31%]
+tests/test_lock.py::TestEmulatorLock::test_mine_after_acquire PASSED     [ 31%]
+tests/test_lock.py::TestEmulatorLock::test_mine_after_release PASSED     [ 31%]
+tests/test_lock.py::TestEmulatorLock::test_context_manager PASSED        [ 32%]
+tests/test_lock.py::TestEmulatorLock::test_stale_lock_broken_on_acquire PASSED [ 32%]
+tests/test_lock.py::TestEmulatorLock::test_wait_timeout_false_when_nobody_holds PASSED [ 32%]
+tests/test_lock.py::TestEmulatorLock::test_wait_returns_true_when_held PASSED [ 32%]
+tests/test_lock.py::TestEmulatorLock::test_release_nonexistent_file_is_noop PASSED [ 32%]
+tests/test_lock.py::TestEmulatorLock::test_read_pid_returns_none_for_missing_file PASSED [ 33%]
+tests/test_lock.py::TestEmulatorLock::test_read_pid_returns_none_for_corrupt_file PASSED [ 33%]
+tests/test_lock.py::TestEmulatorLock::test_is_held_false_when_no_file PASSED [ 33%]
+tests/test_lock.py::TestEmulatorLock::test_is_held_true_when_file_exists PASSED [ 33%]
+tests/test_lock.py::TestEmulatorLock::test_is_stale_false_when_no_file PASSED [ 34%]
+tests/test_lock.py::TestEmulatorLock::test_is_stale_false_for_live_pid PASSED [ 34%]
+tests/test_lock.py::TestEmulatorLock::test_is_stale_true_for_dead_pid PASSED [ 34%]
+tests/test_lock.py::TestEmulatorLock::test_break_lock_removes_file PASSED [ 34%]
+tests/test_lock.py::TestEmulatorLock::test_write_pid_creates_file PASSED [ 35%]
+tests/test_lock.py::TestLockFilenameWindows::test_lock_filename_on_noshm_system PASSED [ 35%]
+tests/test_lock.py::TestPidExistsEPERM::test_eperm_means_exists FAILED   [ 35%]
+tests/test_lock.py::TestPidExistsRaise::test_raises_on_unexpected_oserror FAILED [ 35%]
+tests/test_lock.py::TestLockFilenameWindowsExtended::test_windows_path PASSED [ 35%]
+tests/test_lock.py::TestLockWaitNoneTimeout::test_wait_none_timeout_returns_true_if_held PASSED [ 36%]
+tests/test_lock.py::TestBreakLockRaises::test_break_lock_reraises_non_enoent PASSED [ 36%]
+tests/test_play.py::TestPlaySource::test_source_yields_data_records PASSED [ 36%]
+tests/test_play.py::TestPlaySource::test_source_invalid_magic_raises PASSED [ 36%]
+tests/test_play.py::TestPlaySource::test_source_bad_version_raises PASSED [ 37%]
+tests/test_play.py::TestPlaySource::test_source_incomplete_data_raises PASSED [ 37%]
+tests/test_play.py::TestPlaySource::test_timestamps_adjusted_by_offset PASSED [ 37%]
+tests/test_play.py::TestPlayMain::test_play_all_records PASSED           [ 37%]
+tests/test_play.py::TestPlayMain::test_play_returns_1_when_lock_held PASSED [ 38%]
+tests/test_play.py::TestPlayAcquireFailure::test_main_returns_1_if_lock_fails PASSED [ 38%]
+tests/test_play.py::TestPlaySkipsAndLogs::test_play_skips_old_records PASSED [ 38%]
+tests/test_pressure.py::TestPressureServerBasic::test_default_pressure PASSED [ 38%]
+tests/test_pressure.py::TestPressureServerBasic::test_default_temperature PASSED [ 39%]
+tests/test_pressure.py::TestPressureServerBasic::test_set_values PASSED  [ 39%]
+tests/test_pressure.py::TestPressureServerBasic::test_values_written_to_mmap PASSED [ 39%]
+tests/test_pressure.py::TestPressureServerBasic::test_sensor_type_is_set PASSED [ 39%]
+tests/test_pressure.py::TestPressureServerBasic::test_sensor_name_is_set PASSED [ 39%]
+tests/test_pressure.py::TestPressureServerBasic::test_set_values_extreme_min PASSED [ 40%]
+tests/test_pressure.py::TestPressureServerBasic::test_set_values_extreme_max PASSED [ 40%]
+tests/test_pressure.py::TestPressureServerBasic::test_close_is_idempotent PASSED [ 40%]
+tests/test_pressure.py::TestPressureSimulateNoise::test_simulate_noise_default_true PASSED [ 40%]
+tests/test_pressure.py::TestPressureSimulateNoise::test_simulate_noise_off PASSED [ 41%]
+tests/test_pressure.py::TestPressureSimulateNoise::test_enable_then_disable_noise PASSED [ 41%]
+tests/test_pressure.py::TestPressureSimulateNoise::test_noise_does_not_drift_too_far PASSED [ 41%]
+tests/test_pressure.py::TestPressurePerturb::test_perturb_stays_close PASSED [ 41%]
+tests/test_pressure.py::TestPressureFilename::test_direct_call_returns_string PASSED [ 42%]
+tests/test_pressure.py::TestPressureFilename::test_no_shm_uses_tmp FAILED [ 42%]
+tests/test_pressure.py::TestPressureFilename::test_windows_path PASSED   [ 42%]
+tests/test_pressure.py::TestInitPressure::test_creates_file_when_missing PASSED [ 42%]
+tests/test_pressure.py::TestPressureServerAlreadyInitialized::test_reads_existing_type3_data PASSED [ 42%]
+tests/test_pyside_app.py::TestLEDMatrixWidget::test_init_creates_widget PASSED [ 43%]
+tests/test_pyside_app.py::TestLEDMatrixWidget::test_minimum_size PASSED  [ 43%]
+tests/test_pyside_app.py::TestLEDMatrixWidget::test_initial_matrix_data_zeros PASSED [ 43%]
+tests/test_pyside_app.py::TestLEDMatrixWidget::test_update_matrix_reads_file PASSED [ 43%]
+tests/test_pyside_app.py::TestLEDMatrixWidget::test_update_matrix_with_full_192_bytes PASSED [ 44%]
+tests/test_pyside_app.py::TestLEDMatrixWidget::test_paint_event_does_not_raise PASSED [ 44%]
+tests/test_pyside_app.py::TestLEDMatrixWidget::test_update_matrix_handles_missing_file PASSED [ 44%]
+tests/test_pyside_app.py::TestLEDMatrixWidget::test_update_matrix_reads_192_bytes PASSED [ 44%]
+tests/test_pyside_app.py::TestLEDMatrixWidget::test_paint_event_executes PASSED [ 45%]
+tests/test_pyside_app.py::TestSenseEmuDesktop::test_init_creates_window ERROR [ 45%]
+tests/test_pyside_app.py::TestSenseEmuDesktop::test_has_six_sliders ERROR [ 45%]
+tests/test_pyside_app.py::TestSenseEmuDesktop::test_slider_names ERROR   [ 45%]
+tests/test_pyside_app.py::TestSenseEmuDesktop::test_update_sensors_calls_controller ERROR [ 46%]
+tests/test_pyside_app.py::TestSenseEmuDesktop::test_close_event_calls_controller_close ERROR [ 46%]
+tests/test_pyside_app.py::TestPysideMain::test_main_importable PASSED    [ 46%]
+tests/test_pyside_app.py::TestPysideMain::test_pyside_main_module PASSED [ 46%]
+tests/test_pyside_app.py::TestPysideMainFunction::test_main_calls_sys_exit ERROR [ 46%]
+tests/test_record.py::TestRecordApplicationMain::test_records_to_bytesio PASSED [ 47%]
+tests/test_record.py::TestRecordApplicationMain::test_records_at_least_one_data_rec PASSED [ 47%]
+tests/test_record.py::TestRecordApplicationMain::test_flush_flag PASSED  [ 47%]
+tests/test_record.py::TestRecordApplicationMain::test_interval_none_uses_poll_interval PASSED [ 47%]
+tests/test_record.py::TestRecordApplicationMain::test_imu_read_false_skips_record PASSED [ 48%]
+tests/test_record.py::TestRecordApplicationMain::test_pressure_invalid_uses_nan PASSED [ 48%]
+tests/test_record.py::TestRecordApplicationMain::test_missing_rtimu_raises PASSED [ 48%]
+tests/test_record.py::TestRecordApplicationMain::test_bad_config_extension_raises PASSED [ 48%]
+tests/test_record.py::TestRecordApplicationMain::test_imu_init_failure_raises PASSED [ 49%]
+tests/test_record.py::TestRecordApplicationMain::test_pressure_init_failure_raises PASSED [ 49%]
+tests/test_record.py::TestRecordApplicationMain::test_humidity_init_failure_raises PASSED [ 49%]
+tests/test_screen.py::TestScreenFilename::test_returns_string PASSED     [ 49%]
+tests/test_screen.py::TestScreenFilename::test_contains_screen_name PASSED [ 50%]
+tests/test_screen.py::TestScreenClientProperties::test_array_shape PASSED [ 50%]
+tests/test_screen.py::TestScreenClientProperties::test_rgb_array_shape PASSED [ 50%]
+tests/test_screen.py::TestScreenClientProperties::test_timestamp_is_float PASSED [ 50%]
+tests/test_screen.py::TestScreenClientProperties::test_initial_pixels_all_zero PASSED [ 50%]
+tests/test_screen.py::TestScreenClientWrite::test_written_pixel_visible_in_array PASSED [ 51%]
+tests/test_screen.py::TestScreenClientWrite::test_rgb_array_nonzero_after_write PASSED [ 51%]
+tests/test_screen.py::TestScreenClientGamma::test_gamma_default_constants PASSED [ 51%]
+tests/test_screen.py::TestScreenClientGamma::test_gamma_low_constants PASSED [ 51%]
+tests/test_screen.py::TestScreenClientGamma::test_gamma_rgbled_lookup_exists PASSED [ 52%]
+tests/test_screen.py::TestScreenClientClose::test_close_stops_touch_thread PASSED [ 52%]
+tests/test_screen.py::TestScreenClientClose::test_close_idempotent PASSED [ 52%]
+tests/test_screen.py::TestScreenFilenameExtended::test_no_shm_uses_tmp FAILED [ 52%]
+tests/test_screen.py::TestScreenFilenameExtended::test_windows_path PASSED [ 53%]
+tests/test_screen.py::TestInitScreen::test_creates_file_when_missing PASSED [ 53%]
+tests/test_screen.py::TestTouchRunFallback::test_touch_run_without_fd_support PASSED [ 53%]
+tests/test_screen.py::TestTouchRunFallback::test_touch_run_loop_executes PASSED [ 53%]
+tests/test_sense_hat.py::TestPackUnpack::test_pack_bin_roundtrip ERROR   [ 53%]
+tests/test_sense_hat.py::TestPackUnpack::test_pack_black ERROR           [ 54%]
+tests/test_sense_hat.py::TestPackUnpack::test_unpack_zero_is_black ERROR [ 54%]
+tests/test_sense_hat.py::TestPixelOperations::test_set_and_get_pixel ERROR [ 54%]
+tests/test_sense_hat.py::TestPixelOperations::test_set_pixel_tuple_form ERROR [ 54%]
+tests/test_sense_hat.py::TestPixelOperations::test_set_pixel_x_out_of_range ERROR [ 55%]
+tests/test_sense_hat.py::TestPixelOperations::test_set_pixel_y_out_of_range ERROR [ 55%]
+tests/test_sense_hat.py::TestPixelOperations::test_set_pixel_invalid_color ERROR [ 55%]
+tests/test_sense_hat.py::TestPixelOperations::test_get_pixel_x_out_of_range ERROR [ 55%]
+tests/test_sense_hat.py::TestPixelOperations::test_set_pixels_64_pixels ERROR [ 56%]
+tests/test_sense_hat.py::TestPixelOperations::test_set_pixels_wrong_count_raises ERROR [ 56%]
+tests/test_sense_hat.py::TestPixelOperations::test_set_pixels_invalid_pixel_raises ERROR [ 56%]
+tests/test_sense_hat.py::TestPixelOperations::test_clear_all_black ERROR [ 56%]
+tests/test_sense_hat.py::TestPixelOperations::test_clear_with_color ERROR [ 57%]
+tests/test_sense_hat.py::TestFlipAndRotate::test_flip_h_reverses_rows ERROR [ 57%]
+tests/test_sense_hat.py::TestFlipAndRotate::test_flip_v_reverses_columns ERROR [ 57%]
+tests/test_sense_hat.py::TestFlipAndRotate::test_set_rotation_valid ERROR [ 57%]
+tests/test_sense_hat.py::TestFlipAndRotate::test_set_rotation_invalid_raises ERROR [ 57%]
+tests/test_sense_hat.py::TestFlipAndRotate::test_rotation_property_setter ERROR [ 58%]
+tests/test_sense_hat.py::TestTextAssets::test_text_dict_loaded ERROR     [ 58%]
+tests/test_sense_hat.py::TestTextAssets::test_space_character_present ERROR [ 58%]
+tests/test_sense_hat.py::TestTextAssets::test_get_char_pixels_returns_list ERROR [ 58%]
+tests/test_sense_hat.py::TestTextAssets::test_get_char_pixels_unknown_returns_question_mark ERROR [ 59%]
+tests/test_sense_hat.py::TestGamma::test_gamma_property_returns_tuple ERROR [ 59%]
+tests/test_sense_hat.py::TestGamma::test_gamma_setter ERROR              [ 59%]
+tests/test_sense_hat.py::TestGamma::test_low_light_setter ERROR          [ 59%]
+tests/test_sense_hat.py::TestGamma::test_low_light_false_restores_default ERROR [ 60%]
+tests/test_sense_hat.py::TestGamma::test_gamma_reset ERROR               [ 60%]
+tests/test_sense_hat.py::TestSensors::test_get_humidity ERROR            [ 60%]
+tests/test_sense_hat.py::TestSensors::test_humidity_property ERROR       [ 60%]
+tests/test_sense_hat.py::TestSensors::test_get_pressure ERROR            [ 60%]
+tests/test_sense_hat.py::TestSensors::test_pressure_property ERROR       [ 61%]
+tests/test_sense_hat.py::TestSensors::test_get_temperature_from_humidity ERROR [ 61%]
+tests/test_sense_hat.py::TestSensors::test_get_temperature_from_pressure ERROR [ 61%]
+tests/test_sense_hat.py::TestSensors::test_get_temperature ERROR         [ 61%]
+tests/test_sense_hat.py::TestSensors::test_temperature_property ERROR    [ 62%]
+tests/test_sense_hat.py::TestSensors::test_get_orientation_degrees ERROR [ 62%]
+tests/test_sense_hat.py::TestSensors::test_set_imu_config ERROR          [ 62%]
+tests/test_sense_hat.py::TestSensors::test_stick_property ERROR          [ 62%]
+tests/test_sense_hat.py::TestSensors::test_get_compass ERROR             [ 63%]
+tests/test_sense_hat.py::TestSensors::test_get_accelerometer_raw ERROR   [ 63%]
+tests/test_sense_hat.py::TestSensors::test_get_gyroscope_raw ERROR       [ 63%]
+tests/test_sense_hat.py::TestSensors::test_rotation_getter ERROR         [ 63%]
+tests/test_sense_hat.py::TestSensors::test_flip_h_with_redraw ERROR      [ 64%]
+tests/test_sense_hat.py::TestSensors::test_flip_v_with_redraw ERROR      [ 64%]
+tests/test_sense_hat.py::TestSensors::test_set_pixel_invalid_pixel_length ERROR [ 64%]
+tests/test_sense_hat.py::TestSensors::test_set_pixel_wrong_arg_count ERROR [ 64%]
+tests/test_sense_hat.py::TestSensors::test_get_pixel_y_out_of_range ERROR [ 64%]
+tests/test_sense_hat.py::TestSensors::test_clear_with_single_tuple ERROR [ 65%]
+tests/test_sense_hat.py::TestSensors::test_clear_wrong_args_raises ERROR [ 65%]
+tests/test_sense_hat.py::TestSensors::test_show_letter ERROR             [ 65%]
+tests/test_sense_hat.py::TestSensors::test_show_letter_too_long_raises ERROR [ 65%]
+tests/test_sense_hat.py::TestSensors::test_show_message ERROR            [ 66%]
+tests/test_sense_hat.py::TestSensors::test_gamma_wrong_length_raises ERROR [ 66%]
+tests/test_sense_hat.py::TestSensors::test_gamma_out_of_range_raises ERROR [ 66%]
+tests/test_sense_hat.py::TestSensors::test_low_light_getter ERROR        [ 66%]
+tests/test_sense_hat.py::TestSensors::test_humidity_init_failure_raises ERROR [ 67%]
+tests/test_sense_hat.py::TestSensors::test_pressure_init_failure_raises ERROR [ 67%]
+tests/test_sense_hat.py::TestSensors::test_get_humidity_when_invalid ERROR [ 67%]
+tests/test_sense_hat.py::TestSensors::test_get_temperature_from_humidity_when_invalid ERROR [ 67%]
+tests/test_sense_hat.py::TestSensors::test_get_temperature_from_pressure_when_invalid ERROR [ 67%]
+tests/test_sense_hat.py::TestSensors::test_get_pressure_when_invalid ERROR [ 68%]
+tests/test_sense_hat.py::TestSensors::test_temp_property ERROR           [ 68%]
+tests/test_sense_hat.py::TestSensors::test_get_gyroscope ERROR           [ 68%]
+tests/test_sense_hat.py::TestSensors::test_gyro_property ERROR           [ 68%]
+tests/test_sense_hat.py::TestSensors::test_gyroscope_property ERROR      [ 69%]
+tests/test_sense_hat.py::TestSensors::test_get_gyroscope_raw_when_invalid ERROR [ 69%]
+tests/test_sense_hat.py::TestSensors::test_gyro_raw_property ERROR       [ 69%]
+tests/test_sense_hat.py::TestSensors::test_gyroscope_raw_property ERROR  [ 69%]
+tests/test_sense_hat.py::TestSensors::test_get_accelerometer ERROR       [ 70%]
+tests/test_sense_hat.py::TestSensors::test_accel_property ERROR          [ 70%]
+tests/test_sense_hat.py::TestSensors::test_accelerometer_property ERROR  [ 70%]
+tests/test_sense_hat.py::TestSensors::test_get_accelerometer_raw_when_invalid ERROR [ 70%]
+tests/test_sense_hat.py::TestSensors::test_accel_raw_property ERROR      [ 71%]
+tests/test_sense_hat.py::TestSensors::test_accelerometer_raw_property ERROR [ 71%]
+tests/test_sense_hat.py::TestSensors::test_orientation_radians_property ERROR [ 71%]
+tests/test_sense_hat.py::TestSensors::test_orientation_property ERROR    [ 71%]
+tests/test_sense_hat.py::TestSensors::test_get_orientation_radians ERROR [ 71%]
+tests/test_sense_hat.py::TestSensors::test_get_compass_raw ERROR         [ 72%]
+tests/test_sense_hat.py::TestSensors::test_compass_raw_property ERROR    [ 72%]
+tests/test_sense_hat.py::TestSensors::test_set_imu_config_type_error ERROR [ 72%]
+tests/test_sense_hat.py::TestSensors::test_imu_init_failure_raises_oserror ERROR [ 72%]
+tests/test_sense_hat.py::TestSensors::test_load_image_file_not_found ERROR [ 73%]
+tests/test_sense_hat.py::TestSensors::test_load_image_with_redraw ERROR  [ 73%]
+tests/test_sense_hat.py::TestSensors::test_load_image_without_redraw ERROR [ 73%]
+tests/test_sense_hat.py::TestSensors::test_get_raw_data_when_read_imu_fails ERROR [ 73%]
+tests/test_sense_hat.py::TestSenseHatInit::test_full_init ERROR          [ 74%]
+tests/test_sense_hat.py::TestSenseHatInit::test_init_when_lock_not_held_spawns_gui ERROR [ 74%]
+tests/test_sense_hat.py::TestSenseHatInit::test_init_no_fb_device_raises ERROR [ 74%]
+tests/test_sense_hat.py::TestAdditionalSensorBranches::test_init_humidity_already_initialized ERROR [ 74%]
+tests/test_sense_hat.py::TestAdditionalSensorBranches::test_init_pressure_already_initialized ERROR [ 75%]
+tests/test_sense_hat.py::TestAdditionalSensorBranches::test_get_orientation_radians_when_raw_none ERROR [ 75%]
+tests/test_sense_hat.py::TestAdditionalSensorBranches::test_gamma_setter_with_array_type ERROR [ 75%]
+tests/test_sense_hat.py::TestAdditionalSensorBranches::test_show_message_no_rotation_adjust ERROR [ 75%]
+tests/test_sense_hat.py::TestAdditionalSensorBranches::test_show_letter_no_rotation_adjust ERROR [ 75%]
+tests/test_sense_hat.py::TestAdditionalSensorBranches::test_show_message_with_space_char ERROR [ 76%]
+tests/test_sense_hat.py::TestAdditionalSensorBranches::test_set_pixels_element_out_of_range ERROR [ 76%]
+tests/test_sense_hat.py::TestAdditionalSensorBranches::test_get_fb_device ERROR [ 76%]
+tests/test_sense_hat.py::TestAdditionalSensorBranches::test_get_settings_file ERROR [ 76%]
+tests/test_stick.py::TestConstants::test_directions PASSED               [ 77%]
+tests/test_stick.py::TestConstants::test_actions PASSED                  [ 77%]
+tests/test_stick.py::TestInputEvent::test_fields PASSED                  [ 77%]
+tests/test_stick.py::TestInputEvent::test_namedtuple_fields PASSED       [ 77%]
+tests/test_stick.py::TestStickAddress::test_returns_three_tuple FAILED   [ 78%]
+tests/test_stick.py::TestStickServer::test_init_and_close ERROR          [ 78%]
+tests/test_stick.py::TestStickServer::test_close_is_idempotent ERROR     [ 78%]
+tests/test_stick.py::TestStickServer::test_send_enqueues ERROR           [ 78%]
+tests/test_stick.py::TestSenseStickWrapCallback::test_wrap_none_returns_none PASSED [ 78%]
+tests/test_stick.py::TestSenseStickWrapCallback::test_wrap_non_callable_raises PASSED [ 79%]
+tests/test_stick.py::TestSenseStickWrapCallback::test_wrap_zero_arg_callable PASSED [ 79%]
+tests/test_stick.py::TestSenseStickWrapCallback::test_wrap_one_arg_callable PASSED [ 79%]
+tests/test_stick.py::TestSenseStickWrapCallback::test_wrap_two_mandatory_args_raises PASSED [ 79%]
+tests/test_stick.py::TestSenseStickRead::test_read_key_up_pressed PASSED [ 80%]
+tests/test_stick.py::TestSenseStickRead::test_read_non_key_event_returns_none PASSED [ 80%]
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_up_setter PASSED [ 80%]
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_down_setter PASSED [ 80%]
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_left_setter PASSED [ 81%]
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_right_setter PASSED [ 81%]
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_middle_setter PASSED [ 81%]
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_any_setter PASSED [ 81%]
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_up_getter_none_by_default PASSED [ 82%]
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_down_getter_none_by_default PASSED [ 82%]
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_left_getter_none_by_default PASSED [ 82%]
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_right_getter_none_by_default PASSED [ 82%]
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_middle_getter_none_by_default PASSED [ 82%]
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_any_getter_none_by_default PASSED [ 83%]
+tests/test_stick.py::TestSenseStickCallbacks::test_set_callback_to_none_removes PASSED [ 83%]
+tests/test_stick.py::TestSenseStickCallbacks::test_close_clears_callbacks_and_file PASSED [ 83%]
+tests/test_stick.py::TestSenseStickCallbacks::test_context_manager PASSED [ 83%]
+tests/test_stick.py::TestSenseStickCallbacks::test_wrap_builtin_callable PASSED [ 84%]
+tests/test_stick.py::TestSenseStickCallbacks::test_get_events_empty PASSED [ 84%]
+tests/test_stick.py::TestSenseStickCallbacks::test_get_events_with_event PASSED [ 84%]
+tests/test_stick.py::TestSenseStickCallbacks::test_wait_for_event_returns_event PASSED [ 84%]
+tests/test_stick.py::TestSenseStickCallbacks::test_wait_returns_false_for_timeout PASSED [ 85%]
+tests/test_stick.py::TestSenseStickInit::test_init_and_close ERROR       [ 85%]
+tests/test_stick.py::TestSenseStickInit::test_close_when_already_none PASSED [ 85%]
+tests/test_stick.py::TestCallbackRun::test_callback_run_fires_direction_callback PASSED [ 85%]
+tests/test_stick.py::TestCallbackRun::test_callback_run_fires_wildcard_callback PASSED [ 85%]
+tests/test_stick.py::TestCallbackRun::test_start_stop_thread_stop_path PASSED [ 86%]
+tests/test_stick.py::TestCallbackRun::test_wait_for_event_emptybuffer PASSED [ 86%]
+tests/test_stick.py::TestCallbackRun::test_get_events_skips_none_event PASSED [ 86%]
+tests/test_stick.py::TestStickServerServe::test_serve_receives_hello_and_sends_data ERROR [ 86%]
+tests/test_terminal.py::TestFileType::test_open_existing_file_rb PASSED  [ 87%]
+tests/test_terminal.py::TestFileType::test_open_existing_file_r PASSED   [ 87%]
+tests/test_terminal.py::TestFileType::test_missing_file_raises_argument_type_error PASSED [ 87%]
+tests/test_terminal.py::TestFileType::test_dash_reads_stdin_binary PASSED [ 87%]
+tests/test_terminal.py::TestFileType::test_dash_writes_stdout_binary PASSED [ 88%]
+tests/test_terminal.py::TestFileType::test_dash_invalid_mode_raises PASSED [ 88%]
+tests/test_terminal.py::TestFileType::test_repr PASSED                   [ 88%]
+tests/test_terminal.py::TestTerminalApplication::test_instantiation PASSED [ 88%]
+tests/test_terminal.py::TestTerminalApplication::test_call_returns_zero PASSED [ 89%]
+tests/test_terminal.py::TestTerminalApplication::test_verbose_flag_sets_info_level PASSED [ 89%]
+tests/test_terminal.py::TestTerminalApplication::test_quiet_flag PASSED  [ 89%]
+tests/test_terminal.py::TestTerminalApplication::test_version_exits PASSED [ 89%]
+tests/test_terminal.py::TestTerminalApplication::test_handle_system_exit PASSED [ 89%]
+tests/test_terminal.py::TestTerminalApplication::test_handle_keyboard_interrupt PASSED [ 90%]
+tests/test_terminal.py::TestTerminalApplication::test_handle_ioerror PASSED [ 90%]
+tests/test_terminal.py::TestTerminalApplication::test_handle_generic_exception PASSED [ 90%]
+tests/test_terminal.py::TestTerminalApplication::test_configure_logging_with_log_file PASSED [ 90%]
+tests/test_terminal.py::TestTerminalApplication::test_main_raises_not_implemented_for_base PASSED [ 91%]
+tests/test_terminal.py::TestTerminalApplication::test_handle_argument_error PASSED [ 91%]
+tests/test_terminal.py::TestTerminalApplication::test_configure_logging_debug_mode PASSED [ 91%]
+tests/test_terminal.py::TestTerminalApplication::test_comp_line_env_returns_zero PASSED [ 91%]
+tests/test_terminal.py::TestTerminalApplication::test_call_with_debug_flag_pdb PASSED [ 92%]
+tests/test_terminal.py::TestTerminalApplication::test_read_configuration_no_config_returns_args PASSED [ 92%]
+tests/test_terminal.py::TestTerminalApplication::test_file_type_dash_stdout_text PASSED [ 92%]
+tests/test_terminal.py::TestTerminalApplication::test_terminal_app_with_config_files PASSED [ 92%]
+tests/test_terminal.py::TestTerminalApplication::test_read_configuration_with_config_and_extra_files PASSED [ 92%]
+tests/test_terminal.py::TestTerminalApplication::test_read_configuration_no_section_error PASSED [ 93%]
+tests/test_terminal.py::TestTerminalApplication::test_argcomplete_branch PASSED [ 93%]
+tests/test_terminal.py::TestTerminalApplication::test_file_type_stdin_buffer_attr_error PASSED [ 93%]
+tests/test_terminal.py::TestTerminalApplication::test_file_type_stdout_buffer_attr_error PASSED [ 93%]
+tests/test_terminal.py::TestTerminalApplication::test_read_configuration_with_explicit_config_flag PASSED [ 94%]
+tests/test_terminal.py::TestTerminalApplication::test_read_configuration_config_section_none_uses_first PASSED [ 94%]
+tests/test_terminal.py::TestTerminalApplication::test_call_with_none_args_uses_sysargv PASSED [ 94%]
+tests/test_terminal.py::TestTerminalApplication::test_file_type_dash_read_text_mode PASSED [ 94%]
+tests/test_tui.py::TestSenseEmuTUI::test_tui_compose_does_not_raise PASSED [ 95%]
+tests/test_tui.py::TestSenseEmuTUI::test_led_matrix_class_exists PASSED  [ 95%]
+tests/test_tui.py::TestSenseEmuTUI::test_tui_class_has_compose PASSED    [ 95%]
+tests/test_tui.py::TestSenseEmuTUI::test_tui_class_has_css PASSED        [ 95%]
+tests/test_tui.py::TestSenseEmuTUI::test_main_function_exists PASSED     [ 96%]
+tests/test_tui.py::TestSenseEmuTUI::test_on_input_changed_no_controller PASSED [ 96%]
+tests/test_tui.py::TestSenseEmuTUI::test_on_input_changed_invalid_value PASSED [ 96%]
+tests/test_tui.py::TestSenseEmuTUI::test_led_matrix_update_no_screen_file PASSED [ 96%]
+tests/test_tui.py::TestSenseEmuTUI::test_led_matrix_update_with_valid_data PASSED [ 96%]
+tests/test_tui.py::TestSenseEmuTUI::test_on_mount_creates_controller PASSED [ 97%]
+tests/test_tui.py::TestSenseEmuTUI::test_on_unmount_closes_controller PASSED [ 97%]
+tests/test_tui.py::TestSenseEmuTUI::test_on_input_changed_pitch PASSED   [ 97%]
+tests/test_tui.py::TestSenseEmuTUI::test_on_input_changed_pressure PASSED [ 97%]
+tests/test_tui.py::TestSenseEmuTUI::test_on_input_changed_humidity PASSED [ 98%]
+tests/test_tui.py::TestSenseEmuTUI::test_main_function_calls_run PASSED  [ 98%]
+tests/test_tui.py::TestSenseEmuTUI::test_led_matrix_reopen_screen_file PASSED [ 98%]
+tests/test_tui.py::TestLEDMatrixOnMount::test_on_mount_opens_screen_file PASSED [ 98%]
+tests/test_tui.py::TestLEDMatrixOnMount::test_on_mount_handles_missing_screen_file PASSED [ 99%]
+tests/test_tui.py::TestSenseEmuTUICompose::test_compose_is_generator PASSED [ 99%]
+tests/test_tui.py::TestSenseEmuTUICompose::test_compose_body_with_mocked_context_managers PASSED [ 99%]
+tests/test_tui.py::TestSenseEmuTUICompose::test_on_input_changed_inner_value_error PASSED [ 99%]
+tests/test_tui.py::TestSenseEmuTUICompose::test_on_input_changed_unmatched_id PASSED [100%]
+ERROR: Coverage failure: total of 70 is less than fail-under=95
+
+
+=================================== ERRORS ====================================
+____ ERROR at setup of TestEmulatorController.test_creates_all_subsystems _____
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____ ERROR at setup of TestEmulatorController.test_lock_is_held_after_init ____
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestEmulatorController.test_close_releases_lock ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+___________ ERROR at setup of TestEmulatorController.test_close_imu ___________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestEmulatorController.test_close_pressure _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestEmulatorController.test_close_humidity _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_________ ERROR at setup of TestEmulatorController.test_close_screen __________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____ ERROR at setup of TestEmulatorController.test_sensor_values_readable _____
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestEmulatorController.test_set_imu_orientation ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestEmulatorController.test_set_pressure_values ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestEmulatorController.test_set_humidity_values ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+__ ERROR at setup of TestEmulatorController.test_duplicate_controller_raises __
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_______ ERROR at setup of TestSenseEmuDesktop.test_init_creates_window ________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_________ ERROR at setup of TestSenseEmuDesktop.test_has_six_sliders __________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+___________ ERROR at setup of TestSenseEmuDesktop.test_slider_names ___________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestSenseEmuDesktop.test_update_sensors_calls_controller __
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestSenseEmuDesktop.test_close_event_calls_controller_close _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestPysideMainFunction.test_main_calls_sys_exit ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:111: in emulator
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+__________ ERROR at setup of TestPackUnpack.test_pack_bin_roundtrip ___________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______________ ERROR at setup of TestPackUnpack.test_pack_black _______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_________ ERROR at setup of TestPackUnpack.test_unpack_zero_is_black __________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestPixelOperations.test_set_and_get_pixel _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_______ ERROR at setup of TestPixelOperations.test_set_pixel_tuple_form _______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_____ ERROR at setup of TestPixelOperations.test_set_pixel_x_out_of_range _____
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_____ ERROR at setup of TestPixelOperations.test_set_pixel_y_out_of_range _____
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_____ ERROR at setup of TestPixelOperations.test_set_pixel_invalid_color ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_____ ERROR at setup of TestPixelOperations.test_get_pixel_x_out_of_range _____
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_______ ERROR at setup of TestPixelOperations.test_set_pixels_64_pixels _______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+__ ERROR at setup of TestPixelOperations.test_set_pixels_wrong_count_raises ___
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestPixelOperations.test_set_pixels_invalid_pixel_raises __
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_________ ERROR at setup of TestPixelOperations.test_clear_all_black __________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_________ ERROR at setup of TestPixelOperations.test_clear_with_color _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestFlipAndRotate.test_flip_h_reverses_rows ________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestFlipAndRotate.test_flip_v_reverses_columns _______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_________ ERROR at setup of TestFlipAndRotate.test_set_rotation_valid _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____ ERROR at setup of TestFlipAndRotate.test_set_rotation_invalid_raises _____
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestFlipAndRotate.test_rotation_property_setter ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+___________ ERROR at setup of TestTextAssets.test_text_dict_loaded ____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestTextAssets.test_space_character_present ________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_____ ERROR at setup of TestTextAssets.test_get_char_pixels_returns_list ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestTextAssets.test_get_char_pixels_unknown_returns_question_mark _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestGamma.test_gamma_property_returns_tuple ________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________________ ERROR at setup of TestGamma.test_gamma_setter ________________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______________ ERROR at setup of TestGamma.test_low_light_setter ______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestGamma.test_low_light_false_restores_default ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________________ ERROR at setup of TestGamma.test_gamma_reset _________________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_______________ ERROR at setup of TestSensors.test_get_humidity _______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____________ ERROR at setup of TestSensors.test_humidity_property _____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_______________ ERROR at setup of TestSensors.test_get_pressure _______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____________ ERROR at setup of TestSensors.test_pressure_property _____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestSensors.test_get_temperature_from_humidity _______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestSensors.test_get_temperature_from_pressure _______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_____________ ERROR at setup of TestSensors.test_get_temperature ______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+___________ ERROR at setup of TestSensors.test_temperature_property ___________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_________ ERROR at setup of TestSensors.test_get_orientation_degrees __________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______________ ERROR at setup of TestSensors.test_set_imu_config ______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______________ ERROR at setup of TestSensors.test_stick_property ______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_______________ ERROR at setup of TestSensors.test_get_compass ________________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+__________ ERROR at setup of TestSensors.test_get_accelerometer_raw ___________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____________ ERROR at setup of TestSensors.test_get_gyroscope_raw _____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_____________ ERROR at setup of TestSensors.test_rotation_getter ______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____________ ERROR at setup of TestSensors.test_flip_h_with_redraw ____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____________ ERROR at setup of TestSensors.test_flip_v_with_redraw ____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestSensors.test_set_pixel_invalid_pixel_length ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestSensors.test_set_pixel_wrong_arg_count _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_________ ERROR at setup of TestSensors.test_get_pixel_y_out_of_range _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_________ ERROR at setup of TestSensors.test_clear_with_single_tuple __________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_________ ERROR at setup of TestSensors.test_clear_wrong_args_raises __________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_______________ ERROR at setup of TestSensors.test_show_letter ________________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_______ ERROR at setup of TestSensors.test_show_letter_too_long_raises ________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_______________ ERROR at setup of TestSensors.test_show_message _______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestSensors.test_gamma_wrong_length_raises _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestSensors.test_gamma_out_of_range_raises _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_____________ ERROR at setup of TestSensors.test_low_light_getter _____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_______ ERROR at setup of TestSensors.test_humidity_init_failure_raises _______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_______ ERROR at setup of TestSensors.test_pressure_init_failure_raises _______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestSensors.test_get_humidity_when_invalid _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestSensors.test_get_temperature_from_humidity_when_invalid _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestSensors.test_get_temperature_from_pressure_when_invalid _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestSensors.test_get_pressure_when_invalid _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______________ ERROR at setup of TestSensors.test_temp_property _______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______________ ERROR at setup of TestSensors.test_get_gyroscope _______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______________ ERROR at setup of TestSensors.test_gyro_property _______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____________ ERROR at setup of TestSensors.test_gyroscope_property ____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestSensors.test_get_gyroscope_raw_when_invalid ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____________ ERROR at setup of TestSensors.test_gyro_raw_property _____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+__________ ERROR at setup of TestSensors.test_gyroscope_raw_property __________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____________ ERROR at setup of TestSensors.test_get_accelerometer _____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______________ ERROR at setup of TestSensors.test_accel_property ______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+__________ ERROR at setup of TestSensors.test_accelerometer_property __________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____ ERROR at setup of TestSensors.test_get_accelerometer_raw_when_invalid ____
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____________ ERROR at setup of TestSensors.test_accel_raw_property ____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestSensors.test_accelerometer_raw_property ________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_______ ERROR at setup of TestSensors.test_orientation_radians_property _______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+___________ ERROR at setup of TestSensors.test_orientation_property ___________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_________ ERROR at setup of TestSensors.test_get_orientation_radians __________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_____________ ERROR at setup of TestSensors.test_get_compass_raw ______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+___________ ERROR at setup of TestSensors.test_compass_raw_property ___________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestSensors.test_set_imu_config_type_error _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_____ ERROR at setup of TestSensors.test_imu_init_failure_raises_oserror ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestSensors.test_load_image_file_not_found _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+__________ ERROR at setup of TestSensors.test_load_image_with_redraw __________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+________ ERROR at setup of TestSensors.test_load_image_without_redraw _________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_____ ERROR at setup of TestSensors.test_get_raw_data_when_read_imu_fails _____
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______________ ERROR at setup of TestSenseHatInit.test_full_init ______________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestSenseHatInit.test_init_when_lock_not_held_spawns_gui __
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestSenseHatInit.test_init_no_fb_device_raises _______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestAdditionalSensorBranches.test_init_humidity_already_initialized _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestAdditionalSensorBranches.test_init_pressure_already_initialized _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestAdditionalSensorBranches.test_get_orientation_radians_when_raw_none _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestAdditionalSensorBranches.test_gamma_setter_with_array_type _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestAdditionalSensorBranches.test_show_message_no_rotation_adjust _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestAdditionalSensorBranches.test_show_letter_no_rotation_adjust _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestAdditionalSensorBranches.test_show_message_with_space_char _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestAdditionalSensorBranches.test_set_pixels_element_out_of_range _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+______ ERROR at setup of TestAdditionalSensorBranches.test_get_fb_device ______
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____ ERROR at setup of TestAdditionalSensorBranches.test_get_settings_file ____
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____________ ERROR at setup of TestStickServer.test_init_and_close ____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_________ ERROR at setup of TestStickServer.test_close_is_idempotent __________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+____________ ERROR at setup of TestStickServer.test_send_enqueues _____________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+__________ ERROR at setup of TestSenseStickInit.test_init_and_close ___________
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+_ ERROR at setup of TestStickServerServe.test_serve_receives_hello_and_sends_data _
+venv\Lib\site-packages\pytestqt\plugin.py:178: in pytest_runtest_setup
+    result = yield
+             ^^^^^
+tests\conftest.py:82: in tmp_stick_addr
+    return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
+                  ^^^^^^^^^^^^^^
+E   AttributeError: module 'socket' has no attribute 'AF_UNIX'
+================================== FAILURES ===================================
+____________________ TestDumpMain.test_generates_csv_rows _____________________
+tests\test_dump.py:56: in test_generates_csv_rows
+    assert len(rows) == 5
+E   AssertionError: assert 10 == 5
+E    +  where 10 = len([['2026-06-07T23:01:14.072123', '1013.0', '20.0', '45.0', '20.0', '0.0', ...], [], ['2026-06-07T23:01:14.172122', '1014.0', '21.0', '46.0', '21.0', '0.0', ...], [], ['2026-06-07T23:01:14.272123', '1015.0', '22.0', '47.0', '22.0', '0.0', ...], [], ...])
+------------------------------ Captured log call ------------------------------
+INFO     root:dump.py:50 Reading header
+INFO     root:dump.py:56 Dumping recording taken at 07/06/2026 23:01:14
+INFO     root:dump.py:91 Converted 4 records
+________________ TestDumpMain.test_header_flag_adds_header_row ________________
+tests\test_dump.py:64: in test_header_flag_adds_header_row
+    assert len(rows) == 6  # 1 header + 5 data
+    ^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: assert 12 == 6
+E    +  where 12 = len([['timestamp', 'pressure', 'pressure_temp', 'humidity', 'humidity_temp', 'accel_x', ...], [], ['2026-06-07T23:01:14.133948', '1013.0', '20.0', '45.0', '20.0', '0.0', ...], [], ['2026-06-07T23:01:14.233948', '1014.0', '21.0', '46.0', '21.0', '0.0', ...], [], ...])
+------------------------------ Captured log call ------------------------------
+INFO     root:dump.py:50 Reading header
+INFO     root:dump.py:56 Dumping recording taken at 07/06/2026 23:01:14
+INFO     root:dump.py:91 Converted 4 records
+_______________ TestDumpMain.test_csv_has_correct_column_count ________________
+tests\test_dump.py:71: in test_csv_has_correct_column_count
+    assert all(len(row) == 17 for row in rows)
+E   assert False
+E    +  where False = all(<generator object TestDumpMain.test_csv_has_correct_column_count.<locals>.<genexpr> at 0x000001A1A4877510>)
+------------------------------ Captured log call ------------------------------
+INFO     root:dump.py:50 Reading header
+INFO     root:dump.py:56 Dumping recording taken at 07/06/2026 23:01:14
+INFO     root:dump.py:91 Converted 4 records
+__________________ TestDumpMain.test_custom_timestamp_format __________________
+tests\test_dump.py:75: in test_custom_timestamp_format
+    app(['--timestamp-format', '%s', sample_recording, out_file])
+sense_emu\terminal.py:172: in __call__
+    return self.main(args) or 0
+           ^^^^^^^^^^^^^^^
+sense_emu\dump.py:83: in main
+    dt.datetime.fromtimestamp(data.timestamp).strftime(args.timestamp_format),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ValueError: Invalid format string
+------------------------------ Captured log call ------------------------------
+INFO     root:dump.py:50 Reading header
+INFO     root:dump.py:56 Dumping recording taken at 07/06/2026 23:01:14
+__________________ TestHumidityFilename.test_no_shm_uses_tmp __________________
+tests\test_humidity.py:113: in test_no_shm_uses_tmp
+    assert result == '/tmp/rpi-sense-emu-humidity'
+E   AssertionError: assert 'C:\\Users\\j...-emu-humidity' == '/tmp/rpi-sense-emu-humidity'
+E     
+E     - /tmp/rpi-sense-emu-humidity
+E     + C:\Users\jnsst\AppData\Local\Temp\rpi-sense-emu-humidity
+_________ TestInitI18n.test_init_recovers_from_missing_bindtextdomain _________
+tests\test_i18n.py:39: in test_init_recovers_from_missing_bindtextdomain
+    with patch('locale.bindtextdomain', side_effect=AttributeError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Python313\Lib\unittest\mock.py:1503: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+C:\Python313\Lib\unittest\mock.py:1473: in get_original
+    raise AttributeError(
+E   AttributeError: <module 'locale' from 'C:\\Python313\\Lib\\locale.py'> does not have the attribute 'bindtextdomain'
+____________ TestInitI18n.test_init_recovers_windows_intl_missing _____________
+tests\test_i18n.py:52: in test_init_recovers_windows_intl_missing
+    with patch('locale.bindtextdomain', side_effect=AttributeError), \
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Python313\Lib\unittest\mock.py:1503: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+C:\Python313\Lib\unittest\mock.py:1473: in get_original
+    raise AttributeError(
+E   AttributeError: <module 'locale' from 'C:\\Python313\\Lib\\locale.py'> does not have the attribute 'bindtextdomain'
+_______________ TestInitI18n.test_init_windows_intl_unavailable _______________
+tests\test_i18n.py:59: in test_init_windows_intl_unavailable
+    with patch('locale.bindtextdomain', side_effect=AttributeError), \
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Python313\Lib\unittest\mock.py:1503: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+C:\Python313\Lib\unittest\mock.py:1473: in get_original
+    raise AttributeError(
+E   AttributeError: <module 'locale' from 'C:\\Python313\\Lib\\locale.py'> does not have the attribute 'bindtextdomain'
+________________ TestImuFilenameExtended.test_no_shm_uses_tmp _________________
+tests\test_imu.py:160: in test_no_shm_uses_tmp
+    assert result == '/tmp/rpi-sense-emu-imu'
+E   AssertionError: assert 'C:\\Users\\j...sense-emu-imu' == '/tmp/rpi-sense-emu-imu'
+E     
+E     - /tmp/rpi-sense-emu-imu
+E     + C:\Users\jnsst\AppData\Local\Temp\rpi-sense-emu-imu
+_________________________ TestPidExists.test_pid_zero _________________________
+tests\test_lock.py:17: in test_pid_zero
+    assert pid_exists(0) is True
+E   assert False is True
+E    +  where False = pid_exists(0)
+_________________ TestPidExistsEPERM.test_eperm_means_exists __________________
+tests\test_lock.py:154: in test_eperm_means_exists
+    assert pid_exists(1) is True
+E   assert False is True
+E    +  where False = <function pid_exists at 0x000001A1A1D45940>(1)
+____________ TestPidExistsRaise.test_raises_on_unexpected_oserror _____________
+tests\test_lock.py:164: in test_raises_on_unexpected_oserror
+    with pytest.raises(OSError):
+         ^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'OSError'>
+__________________ TestPressureFilename.test_no_shm_uses_tmp __________________
+tests\test_pressure.py:115: in test_no_shm_uses_tmp
+    assert result == '/tmp/rpi-sense-emu-pressure'
+E   AssertionError: assert 'C:\\Users\\j...-emu-pressure' == '/tmp/rpi-sense-emu-pressure'
+E     
+E     - /tmp/rpi-sense-emu-pressure
+E     + C:\Users\jnsst\AppData\Local\Temp\rpi-sense-emu-pressure
+_______________ TestScreenFilenameExtended.test_no_shm_uses_tmp _______________
+tests\test_screen.py:104: in test_no_shm_uses_tmp
+    assert result == '/tmp/rpi-sense-emu-screen'
+E   AssertionError: assert 'C:\\Users\\j...se-emu-screen' == '/tmp/rpi-sense-emu-screen'
+E     
+E     - /tmp/rpi-sense-emu-screen
+E     + C:\Users\jnsst\AppData\Local\Temp\rpi-sense-emu-screen
+__________________ TestStickAddress.test_returns_three_tuple __________________
+tests\test_stick.py:42: in test_returns_three_tuple
+    assert isinstance(addr, str)
+E   AssertionError: assert False
+E    +  where False = isinstance(('127.0.0.1', 53753), str)
+============================== warnings summary ===============================
+sense_emu\i18n.py:24
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\i18n.py:24: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+    import pkg_resources
+
+venv\Lib\site-packages\pkg_resources\__init__.py:2832
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\pkg_resources\__init__.py:2832: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('sphinxcontrib')`.
+  Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+    declare_namespace(pkg)
+
+sense_emu\terminal.py:108
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\terminal.py:108: DeprecationWarning: 'locale.getdefaultlocale' is deprecated and slated for removal in Python 3.15. Use setlocale(), getencoding() and getlocale() instead.
+    encoding = locale.getdefaultlocale()[1]
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_down_getter_none_by_default
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-32 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 266, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 189, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_direction_down_getter_none_by_default
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-33 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 266, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 189, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_set_callback_to_none_removes
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-29 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 266, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 189, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_set_callback_to_none_removes
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-28 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 266, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 189, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_set_callback_to_none_removes
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-31 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 266, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 189, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_set_callback_to_none_removes
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-30 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 266, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 189, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/test_stick.py::TestSenseStickCallbacks::test_set_callback_to_none_removes
+  C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\venv\Lib\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-34 (_callback_run)
+  
+  Traceback (most recent call last):
+    File "C:\Python313\Lib\threading.py", line 1044, in _bootstrap_inner
+      self.run()
+      ~~~~~~~~^^
+    File "C:\Python313\Lib\threading.py", line 995, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 266, in _callback_run
+      event = self._read()
+    File "C:\Users\jnsst\PyCharmMiscProject\sense-emu-x\sense-emu-x\sense_emu\stick.py", line 189, in _read
+      (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
+                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  TypeError: a bytes-like object is required, not 'MagicMock'
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.13.13-final-0 _______________
+
+Name                       Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------
+sense_emu\RTIMU.py           111      0     10      0   100%
+sense_emu\__init__.py         17      2      2      1    84%   75-79
+sense_emu\common.py           21      0      6      2    93%   74->78, 75->74
+sense_emu\core.py             25     16      0      0    36%   10-20, 23-28
+sense_emu\dump.py             41      0     10      0   100%
+sense_emu\humidity.py        106      4     20      2    94%   74-77, 101
+sense_emu\i18n.py             32      7      2      1    76%   46, 57-66
+sense_emu\imu.py             154      6     22      2    94%   67-70, 93, 101-102
+sense_emu\lock.py             99     18     32      5    76%   42, 46, 50, 54-67, 82-85
+sense_emu\play.py             62      0     16      2    97%   81->83, 95->97
+sense_emu\pressure.py        107      4     20      2    94%   66-69, 93
+sense_emu\pyside_app.py       92     45     10      1    55%   57-95, 98-108, 111-112, 115-118, 121
+sense_emu\pyside_main.py       3      1      2      1    60%   3
+sense_emu\record.py           75      2     22      2    96%   88, 93
+sense_emu\screen.py           75      5     10      2    89%   51-54, 72, 120
+sense_emu\sense_hat.py       429    322    130      0    19%   78-145, 163-171, 179-193, 201-216, 223-226, 237, 245, 249, 257-264, 271-275, 282-287, 294-301, 308-315, 324-340, 348-356, 369-394, 402-416, 424-433, 447-458, 466-469, 485-511, 524-541, 545-547, 551-562, 568, 572, 576-579, 590-593, 600-603, 610-615, 619, 626-631, 638-643, 650, 654, 658, 665-670, 674, 685-692, 728-738, 745-757, 765-773, 777, 786-790, 793, 797, 836-837, 841, 845, 852-857, 861, 865, 872-873, 877, 881, 888-893, 897, 901
+sense_emu\stick.py           236     73     64      4    65%   83-86, 100-133, 157-160, 180, 267->265, 287->exit, 289->287, 411-424, 427-457, 460-462, 465
+sense_emu\terminal.py        138      1     52      2    98%   187, 188->205
+sense_emu\tui.py              86      1     18      1    98%   105
+----------------------------------------------------------------------
+TOTAL                       1909    507    448     30    70%
+FAIL Required test coverage of 95% not reached. Total coverage: 69.83%
+=========================== short test summary info ===========================
+FAILED tests/test_dump.py::TestDumpMain::test_generates_csv_rows - AssertionE...
+FAILED tests/test_dump.py::TestDumpMain::test_header_flag_adds_header_row - A...
+FAILED tests/test_dump.py::TestDumpMain::test_csv_has_correct_column_count - ...
+FAILED tests/test_dump.py::TestDumpMain::test_custom_timestamp_format - Value...
+FAILED tests/test_humidity.py::TestHumidityFilename::test_no_shm_uses_tmp - A...
+FAILED tests/test_i18n.py::TestInitI18n::test_init_recovers_from_missing_bindtextdomain
+FAILED tests/test_i18n.py::TestInitI18n::test_init_recovers_windows_intl_missing
+FAILED tests/test_i18n.py::TestInitI18n::test_init_windows_intl_unavailable
+FAILED tests/test_imu.py::TestImuFilenameExtended::test_no_shm_uses_tmp - Ass...
+FAILED tests/test_lock.py::TestPidExists::test_pid_zero - assert False is True
+FAILED tests/test_lock.py::TestPidExistsEPERM::test_eperm_means_exists - asse...
+FAILED tests/test_lock.py::TestPidExistsRaise::test_raises_on_unexpected_oserror
+FAILED tests/test_pressure.py::TestPressureFilename::test_no_shm_uses_tmp - A...
+FAILED tests/test_screen.py::TestScreenFilenameExtended::test_no_shm_uses_tmp
+FAILED tests/test_stick.py::TestStickAddress::test_returns_three_tuple - Asse...
+ERROR tests/test_core.py::TestEmulatorController::test_creates_all_subsystems
+ERROR tests/test_core.py::TestEmulatorController::test_lock_is_held_after_init
+ERROR tests/test_core.py::TestEmulatorController::test_close_releases_lock - ...
+ERROR tests/test_core.py::TestEmulatorController::test_close_imu - AttributeE...
+ERROR tests/test_core.py::TestEmulatorController::test_close_pressure - Attri...
+ERROR tests/test_core.py::TestEmulatorController::test_close_humidity - Attri...
+ERROR tests/test_core.py::TestEmulatorController::test_close_screen - Attribu...
+ERROR tests/test_core.py::TestEmulatorController::test_sensor_values_readable
+ERROR tests/test_core.py::TestEmulatorController::test_set_imu_orientation - ...
+ERROR tests/test_core.py::TestEmulatorController::test_set_pressure_values - ...
+ERROR tests/test_core.py::TestEmulatorController::test_set_humidity_values - ...
+ERROR tests/test_core.py::TestEmulatorController::test_duplicate_controller_raises
+ERROR tests/test_pyside_app.py::TestSenseEmuDesktop::test_init_creates_window
+ERROR tests/test_pyside_app.py::TestSenseEmuDesktop::test_has_six_sliders - A...
+ERROR tests/test_pyside_app.py::TestSenseEmuDesktop::test_slider_names - Attr...
+ERROR tests/test_pyside_app.py::TestSenseEmuDesktop::test_update_sensors_calls_controller
+ERROR tests/test_pyside_app.py::TestSenseEmuDesktop::test_close_event_calls_controller_close
+ERROR tests/test_pyside_app.py::TestPysideMainFunction::test_main_calls_sys_exit
+ERROR tests/test_sense_hat.py::TestPackUnpack::test_pack_bin_roundtrip - Attr...
+ERROR tests/test_sense_hat.py::TestPackUnpack::test_pack_black - AttributeErr...
+ERROR tests/test_sense_hat.py::TestPackUnpack::test_unpack_zero_is_black - At...
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_and_get_pixel - ...
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixel_tuple_form
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixel_x_out_of_range
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixel_y_out_of_range
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixel_invalid_color
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_get_pixel_x_out_of_range
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixels_64_pixels
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixels_wrong_count_raises
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_set_pixels_invalid_pixel_raises
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_clear_all_black - At...
+ERROR tests/test_sense_hat.py::TestPixelOperations::test_clear_with_color - A...
+ERROR tests/test_sense_hat.py::TestFlipAndRotate::test_flip_h_reverses_rows
+ERROR tests/test_sense_hat.py::TestFlipAndRotate::test_flip_v_reverses_columns
+ERROR tests/test_sense_hat.py::TestFlipAndRotate::test_set_rotation_valid - A...
+ERROR tests/test_sense_hat.py::TestFlipAndRotate::test_set_rotation_invalid_raises
+ERROR tests/test_sense_hat.py::TestFlipAndRotate::test_rotation_property_setter
+ERROR tests/test_sense_hat.py::TestTextAssets::test_text_dict_loaded - Attrib...
+ERROR tests/test_sense_hat.py::TestTextAssets::test_space_character_present
+ERROR tests/test_sense_hat.py::TestTextAssets::test_get_char_pixels_returns_list
+ERROR tests/test_sense_hat.py::TestTextAssets::test_get_char_pixels_unknown_returns_question_mark
+ERROR tests/test_sense_hat.py::TestGamma::test_gamma_property_returns_tuple
+ERROR tests/test_sense_hat.py::TestGamma::test_gamma_setter - AttributeError:...
+ERROR tests/test_sense_hat.py::TestGamma::test_low_light_setter - AttributeEr...
+ERROR tests/test_sense_hat.py::TestGamma::test_low_light_false_restores_default
+ERROR tests/test_sense_hat.py::TestGamma::test_gamma_reset - AttributeError: ...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_humidity - AttributeErro...
+ERROR tests/test_sense_hat.py::TestSensors::test_humidity_property - Attribut...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_pressure - AttributeErro...
+ERROR tests/test_sense_hat.py::TestSensors::test_pressure_property - Attribut...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_temperature_from_humidity
+ERROR tests/test_sense_hat.py::TestSensors::test_get_temperature_from_pressure
+ERROR tests/test_sense_hat.py::TestSensors::test_get_temperature - AttributeE...
+ERROR tests/test_sense_hat.py::TestSensors::test_temperature_property - Attri...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_orientation_degrees - At...
+ERROR tests/test_sense_hat.py::TestSensors::test_set_imu_config - AttributeEr...
+ERROR tests/test_sense_hat.py::TestSensors::test_stick_property - AttributeEr...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_compass - AttributeError...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_accelerometer_raw - Attr...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_gyroscope_raw - Attribut...
+ERROR tests/test_sense_hat.py::TestSensors::test_rotation_getter - AttributeE...
+ERROR tests/test_sense_hat.py::TestSensors::test_flip_h_with_redraw - Attribu...
+ERROR tests/test_sense_hat.py::TestSensors::test_flip_v_with_redraw - Attribu...
+ERROR tests/test_sense_hat.py::TestSensors::test_set_pixel_invalid_pixel_length
+ERROR tests/test_sense_hat.py::TestSensors::test_set_pixel_wrong_arg_count - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_pixel_y_out_of_range - A...
+ERROR tests/test_sense_hat.py::TestSensors::test_clear_with_single_tuple - At...
+ERROR tests/test_sense_hat.py::TestSensors::test_clear_wrong_args_raises - At...
+ERROR tests/test_sense_hat.py::TestSensors::test_show_letter - AttributeError...
+ERROR tests/test_sense_hat.py::TestSensors::test_show_letter_too_long_raises
+ERROR tests/test_sense_hat.py::TestSensors::test_show_message - AttributeErro...
+ERROR tests/test_sense_hat.py::TestSensors::test_gamma_wrong_length_raises - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_gamma_out_of_range_raises - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_low_light_getter - Attribute...
+ERROR tests/test_sense_hat.py::TestSensors::test_humidity_init_failure_raises
+ERROR tests/test_sense_hat.py::TestSensors::test_pressure_init_failure_raises
+ERROR tests/test_sense_hat.py::TestSensors::test_get_humidity_when_invalid - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_temperature_from_humidity_when_invalid
+ERROR tests/test_sense_hat.py::TestSensors::test_get_temperature_from_pressure_when_invalid
+ERROR tests/test_sense_hat.py::TestSensors::test_get_pressure_when_invalid - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_temp_property - AttributeErr...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_gyroscope - AttributeErr...
+ERROR tests/test_sense_hat.py::TestSensors::test_gyro_property - AttributeErr...
+ERROR tests/test_sense_hat.py::TestSensors::test_gyroscope_property - Attribu...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_gyroscope_raw_when_invalid
+ERROR tests/test_sense_hat.py::TestSensors::test_gyro_raw_property - Attribut...
+ERROR tests/test_sense_hat.py::TestSensors::test_gyroscope_raw_property - Att...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_accelerometer - Attribut...
+ERROR tests/test_sense_hat.py::TestSensors::test_accel_property - AttributeEr...
+ERROR tests/test_sense_hat.py::TestSensors::test_accelerometer_property - Att...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_accelerometer_raw_when_invalid
+ERROR tests/test_sense_hat.py::TestSensors::test_accel_raw_property - Attribu...
+ERROR tests/test_sense_hat.py::TestSensors::test_accelerometer_raw_property
+ERROR tests/test_sense_hat.py::TestSensors::test_orientation_radians_property
+ERROR tests/test_sense_hat.py::TestSensors::test_orientation_property - Attri...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_orientation_radians - At...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_compass_raw - AttributeE...
+ERROR tests/test_sense_hat.py::TestSensors::test_compass_raw_property - Attri...
+ERROR tests/test_sense_hat.py::TestSensors::test_set_imu_config_type_error - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_imu_init_failure_raises_oserror
+ERROR tests/test_sense_hat.py::TestSensors::test_load_image_file_not_found - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_load_image_with_redraw - Att...
+ERROR tests/test_sense_hat.py::TestSensors::test_load_image_without_redraw - ...
+ERROR tests/test_sense_hat.py::TestSensors::test_get_raw_data_when_read_imu_fails
+ERROR tests/test_sense_hat.py::TestSenseHatInit::test_full_init - AttributeEr...
+ERROR tests/test_sense_hat.py::TestSenseHatInit::test_init_when_lock_not_held_spawns_gui
+ERROR tests/test_sense_hat.py::TestSenseHatInit::test_init_no_fb_device_raises
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_init_humidity_already_initialized
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_init_pressure_already_initialized
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_get_orientation_radians_when_raw_none
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_gamma_setter_with_array_type
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_show_message_no_rotation_adjust
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_show_letter_no_rotation_adjust
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_show_message_with_space_char
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_set_pixels_element_out_of_range
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_get_fb_device
+ERROR tests/test_sense_hat.py::TestAdditionalSensorBranches::test_get_settings_file
+ERROR tests/test_stick.py::TestStickServer::test_init_and_close - AttributeEr...
+ERROR tests/test_stick.py::TestStickServer::test_close_is_idempotent - Attrib...
+ERROR tests/test_stick.py::TestStickServer::test_send_enqueues - AttributeErr...
+ERROR tests/test_stick.py::TestSenseStickInit::test_init_and_close - Attribut...
+ERROR tests/test_stick.py::TestStickServerServe::test_serve_receives_hello_and_sends_data
+=========== 15 failed, 291 passed, 10 warnings, 122 errors in 9.48s ===========

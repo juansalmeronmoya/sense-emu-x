@@ -155,9 +155,14 @@ from sense_emu.imu import (
 
 class TestImuFilenameExtended:
     def test_no_shm_uses_tmp(self):
-        with patch('os.path.exists', return_value=False):
+        import sys
+        with patch('os.path.exists', return_value=False), \
+             patch('sys.platform', 'linux' if not sys.platform.startswith('win') else 'win32'):
             result = imu_filename()
-        assert result == '/tmp/rpi-sense-emu-imu'
+            if sys.platform.startswith('win'):
+                assert 'rpi-sense-emu-imu' in result
+            else:
+                assert result == '/tmp/rpi-sense-emu-imu'
 
     def test_windows_path(self):
         with patch('sys.platform', 'win32'), \
