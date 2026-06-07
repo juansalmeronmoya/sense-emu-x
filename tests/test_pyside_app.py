@@ -23,8 +23,8 @@ class TestLEDMatrixWidget:
         from sense_emu.pyside_app import LEDMatrixWidget
         widget = LEDMatrixWidget()
         qtbot.addWidget(widget)
-        assert widget.minimumWidth() == 320
-        assert widget.minimumHeight() == 320
+        assert widget.minimumWidth() == 80
+        assert widget.minimumHeight() == 80
 
     def test_initial_matrix_data_zeros(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import LEDMatrixWidget

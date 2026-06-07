@@ -5,8 +5,8 @@ import struct
 import numpy as np
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QSlider, QLabel, QGridLayout,
-                               QPushButton, QScrollArea, QGroupBox)
-from PySide6.QtCore import Qt, QTimer
+                               QPushButton, QScrollArea, QGroupBox, QSizePolicy)
+from PySide6.QtCore import Qt, QTimer, QSize
 from PySide6.QtGui import QPainter, QColor
 
 from .core import EmulatorController
@@ -15,7 +15,7 @@ from .screen import screen_filename, GAMMA_DEFAULT, GAMMA_LOW
 class LEDMatrixWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.setMinimumSize(320, 320)
+        self.setMinimumSize(80, 80)
         self.rgb_data = np.zeros((8, 8, 3), dtype=np.uint8)
 
         self.gamma_rgbled = (
@@ -30,6 +30,12 @@ class LEDMatrixWidget(QWidget):
             self.screen_file = io.open(screen_filename(), 'rb')
         except:
             self.screen_file = None
+
+    def sizeHint(self):
+        return QSize(320, 320)
+
+    def heightForWidth(self, w):
+        return w
 
     def update_matrix(self):
         if not self.screen_file:
@@ -57,6 +63,11 @@ class LEDMatrixWidget(QWidget):
                 self.update()
         except:
             pass
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        size = min(self.width(), self.height())
+        self.setFixedSize(size, size)
 
     def paintEvent(self, event):
         painter = QPainter(self)
