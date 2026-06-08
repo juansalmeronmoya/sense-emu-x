@@ -19,18 +19,12 @@
 import sys
 import locale
 import gettext as _gettext
-import atexit
-
-import pkg_resources
+import pathlib
 
 from . import __project__
 
 def init_i18n(languages=None):
-    # Ensure any resources we extract get cleaned up interpreter shutdown
-    atexit.register(pkg_resources.cleanup_resources)
-    # Figure out where the language catalogs are; this will extract them
-    # if the package is frozen
-    localedir = pkg_resources.resource_filename(__name__, 'locale')
+    localedir = str(pathlib.Path(__file__).parent / 'locale')
     try:
         # Use the user's default locale instead of C
         locale.setlocale(locale.LC_ALL, '')
