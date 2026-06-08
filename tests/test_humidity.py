@@ -127,6 +127,24 @@ class TestInitHumidity:
         assert os.path.exists(path)
         fd.close()
 
+    def test_truncates_oversized_file(self, tmp_path):
+        path = str(tmp_path / 'oversized_humidity')
+        with open(path, 'wb') as f:
+            f.write(b'\x00' * (HUMIDITY_DATA.size + 50))
+        with patch('sense_emu.humidity.humidity_filename', return_value=path):
+            fd = init_humidity()
+        fd.close()
+        assert os.path.getsize(path) == HUMIDITY_DATA.size
+
+    def test_skips_truncate_when_correct_size(self, tmp_path):
+        path = str(tmp_path / 'correct_humidity')
+        with open(path, 'wb') as f:
+            f.write(b'\xAB' * HUMIDITY_DATA.size)
+        with patch('sense_emu.humidity.humidity_filename', return_value=path):
+            fd = init_humidity()
+        fd.close()
+        assert os.path.getsize(path) == HUMIDITY_DATA.size
+
 
 class TestHumidityServerAlreadyInitialized:
     def test_reads_existing_type2_data(self, tmp_path):

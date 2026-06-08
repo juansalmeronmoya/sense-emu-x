@@ -174,6 +174,24 @@ class TestInitImu:
         assert os.path.exists(path)
         fd.close()
 
+    def test_truncates_oversized_file(self, tmp_path):
+        path = str(tmp_path / 'oversized_imu')
+        with open(path, 'wb') as f:
+            f.write(b'\x00' * (IMU_DATA.size + 50))
+        with patch('sense_emu.imu.imu_filename', return_value=path):
+            fd = init_imu()
+        fd.close()
+        assert os.path.getsize(path) == IMU_DATA.size
+
+    def test_skips_truncate_when_correct_size(self, tmp_path):
+        path = str(tmp_path / 'correct_imu')
+        with open(path, 'wb') as f:
+            f.write(b'\xAB' * IMU_DATA.size)
+        with patch('sense_emu.imu.imu_filename', return_value=path):
+            fd = init_imu()
+        fd.close()
+        assert os.path.getsize(path) == IMU_DATA.size
+
 
 class TestIMUServerExtended:
     def test_already_initialized_branch(self, tmp_path):

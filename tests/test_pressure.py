@@ -129,6 +129,24 @@ class TestInitPressure:
         assert os.path.exists(path)
         fd.close()
 
+    def test_truncates_oversized_file(self, tmp_path):
+        path = str(tmp_path / 'oversized_pressure')
+        with open(path, 'wb') as f:
+            f.write(b'\x00' * (PRESSURE_DATA.size + 50))
+        with patch('sense_emu.pressure.pressure_filename', return_value=path):
+            fd = init_pressure()
+        fd.close()
+        assert os.path.getsize(path) == PRESSURE_DATA.size
+
+    def test_skips_truncate_when_correct_size(self, tmp_path):
+        path = str(tmp_path / 'correct_pressure')
+        with open(path, 'wb') as f:
+            f.write(b'\xAB' * PRESSURE_DATA.size)
+        with patch('sense_emu.pressure.pressure_filename', return_value=path):
+            fd = init_pressure()
+        fd.close()
+        assert os.path.getsize(path) == PRESSURE_DATA.size
+
 
 class TestPressureServerAlreadyInitialized:
     def test_reads_existing_type3_data(self, tmp_path):

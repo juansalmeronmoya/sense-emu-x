@@ -119,6 +119,24 @@ class TestInitScreen:
         assert fd.seek(0, 2) >= 160  # at least 160 bytes
         fd.close()
 
+    def test_truncates_oversized_file(self, tmp_path):
+        path = str(tmp_path / 'oversized_screen')
+        with open(path, 'wb') as f:
+            f.write(b'\x00' * 220)
+        with patch('sense_emu.screen.screen_filename', return_value=path):
+            fd = init_screen()
+        fd.close()
+        assert os.path.getsize(path) == 160
+
+    def test_skips_truncate_when_correct_size(self, tmp_path):
+        path = str(tmp_path / 'correct_screen')
+        with open(path, 'wb') as f:
+            f.write(b'\xAB' * 160)
+        with patch('sense_emu.screen.screen_filename', return_value=path):
+            fd = init_screen()
+        fd.close()
+        assert os.path.getsize(path) == 160
+
 
 class TestTouchRunFallback:
     def test_touch_run_without_fd_support(self, tmp_screen_file):

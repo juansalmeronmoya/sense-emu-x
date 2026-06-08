@@ -455,9 +455,16 @@ class SenseEmuDesktop(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    window = SenseEmuDesktop()
-    window.show()
-    sys.exit(app.exec())
+    try:
+        window = SenseEmuDesktop()
+        window.show()
+        sys.exit(app.exec())
+    except Exception as e:
+        import traceback
+        QMessageBox.critical(
+            None, 'Sense HAT Emulator — Error',
+            f'Could not start the emulator:\n\n{traceback.format_exc()}')
+        sys.exit(1)
 
 
 if __name__ == "__main__":

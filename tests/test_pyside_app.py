@@ -393,3 +393,15 @@ class TestPysideMainFunction:
             mock_window_cls.return_value = mock_window
             main()
         mock_exit.assert_called_once_with(0)
+
+    def test_main_shows_dialog_on_exception(self, tmp_screen_file, emulator):
+        from sense_emu.pyside_app import main
+        with patch('sense_emu.pyside_app.QApplication') as mock_app_cls, \
+             patch('sense_emu.pyside_app.SenseEmuDesktop',
+                   side_effect=RuntimeError('test error')), \
+             patch('sense_emu.pyside_app.QMessageBox') as mock_msgbox, \
+             patch('sys.exit') as mock_exit:
+            mock_app_cls.return_value = MagicMock()
+            main()
+        mock_msgbox.critical.assert_called_once()
+        mock_exit.assert_called_once_with(1)
