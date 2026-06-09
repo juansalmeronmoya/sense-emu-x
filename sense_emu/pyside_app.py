@@ -6,8 +6,10 @@ from time import monotonic
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QSlider, QLabel, QGridLayout,
                                QPushButton, QScrollArea, QGroupBox, QSplitter,
-                               QFileDialog, QMessageBox)
-from PySide6.QtCore import Qt, QTimer, QMargins
+                               QFileDialog, QMessageBox, QDialog, QFormLayout,
+                               QSpinBox, QDialogButtonBox, QSizePolicy,
+                               QDoubleSpinBox)
+from PySide6.QtCore import Qt, QTimer, QMargins, QSize
 from PySide6.QtGui import QPainter, QColor, QAction, QKeySequence
 from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 
@@ -60,9 +62,10 @@ _CHART_GROUPS = [
 # ── LED Matrix ────────────────────────────────────────────────────────────────
 
 class LEDMatrixWidget(QWidget):
-    def __init__(self, screen_client=None):
+    def __init__(self, screen_client=None, cell_size=40):
         super().__init__()
-        self.setMinimumSize(320, 320)
+        self._cell_size = cell_size
+        self._update_size()
         self.matrix_data = bytearray(192)
         self._screen_client = screen_client
 
@@ -70,11 +73,34 @@ class LEDMatrixWidget(QWidget):
         self.timer.timeout.connect(self.update_matrix)
         self.timer.start(100)
 
+    def _update_size(self):
+        side = self._cell_size * 8
+        self.setMinimumSize(side, side)
+        self.setMaximumSize(side, side)
+
+    def set_cell_size(self, cell_size):
+        self._cell_size = max(10, int(cell_size))
+        self._update_size()
+        self.updateGeometry()
+        self.update()
+
+    def cell_size(self):
+        return self._cell_size
+
+    def hasHeightForWidth(self):
+        return True
+
+    def heightForWidth(self, width):
+        return width
+
+    def sizeHint(self):
+        side = self._cell_size * 8
+        return QSize(side, side)
+
     def update_matrix(self):
         if self._screen_client is None:
             return
         try:
-            # rgb_array returns (8, 8, 3) uint8 with gamma correction applied
             rgb = self._screen_client.rgb_array
             self.matrix_data = rgb.flatten().tobytes()
             self.update()
@@ -102,16 +128,18 @@ class LEDMatrixWidget(QWidget):
 
 class TelemetryPanel(QWidget):
     _max_samples = 300
+    _poll_interval_ms = 200
+    _time_window_s = 60
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._hat = None
         self._t0 = 0.0
         self._series = {}
-        self._x_axes = []     # one QValueAxis per chart
-        self._y_axes = []     # one QValueAxis per chart
-        self._chart_keys = [] # list[list[str]] — series keys per chart
-        self._key_to_chart = {}  # key → chart index
+        self._x_axes = []
+        self._y_axes = []
+        self._chart_keys = []
+        self._key_to_chart = {}
 
         root = QVBoxLayout(self)
         root.setContentsMargins(2, 2, 2, 2)
@@ -142,7 +170,7 @@ class TelemetryPanel(QWidget):
             x_axis = QValueAxis()
             x_axis.setLabelsVisible(True)
             x_axis.setTitleVisible(False)
-            x_axis.setRange(0, 60)
+            x_axis.setRange(0, self._time_window_s)
             x_axis.setTickCount(4)
             chart.addAxis(x_axis, Qt.AlignBottom)
 
@@ -172,7 +200,6 @@ class TelemetryPanel(QWidget):
 
             self._chart_keys.append(keys)
 
-            # Compact header: "Title (unit)  ■ X  ■ Y  ■ Z"
             legend_parts = '&nbsp;&nbsp;'.join(
                 f'<span style="color:{c};">&#9632;</span>&nbsp;{n}'
                 for _, c, n in series_defs
@@ -207,18 +234,25 @@ class TelemetryPanel(QWidget):
 
     # ── Public API ────────────────────────────────────────────────────────────
 
+    def apply_settings(self, settings):
+        self._max_samples = settings.get('max_samples', self._max_samples)
+        self._poll_interval_ms = settings.get('poll_interval_ms', self._poll_interval_ms)
+        self._time_window_s = settings.get('time_window_s', self._time_window_s)
+        if self._timer.isActive():
+            self._timer.setInterval(self._poll_interval_ms)
+
     def set_live(self, hat, label='Emulator'):
         self._timer.stop()
         self._hat = hat
         self.clear()
         self._t0 = monotonic()
         self._status_label.setText(f'Source: {label}')
-        self._timer.start(200)
+        self._timer.start(self._poll_interval_ms)
 
     def set_recording(self, path):
         self._timer.stop()
         self._hat = None
-        records = _parse_recording(path)  # raises ValueError on bad file
+        records = _parse_recording(path)
         self.clear()
         if records:
             t0 = records[0].timestamp
@@ -249,7 +283,7 @@ class TelemetryPanel(QWidget):
         for series in self._series.values():
             series.clear()
         for x_axis in self._x_axes:
-            x_axis.setRange(0, 60)
+            x_axis.setRange(0, self._time_window_s)
         for y_axis in self._y_axes:
             y_axis.setRange(-1, 1)
 
@@ -285,12 +319,12 @@ class TelemetryPanel(QWidget):
             self._append('humidity', t, self._hat.get_humidity())
             self._append('htemp', t, self._hat.get_temperature_from_humidity())
 
-            x_min = max(0.0, t - 60.0)
-            x_max = max(x_min + 60.0, t)
+            x_min = max(0.0, t - self._time_window_s)
+            x_max = max(x_min + self._time_window_s, t)
             for x_axis in self._x_axes:
                 x_axis.setRange(x_min, x_max)
         except Exception:
-            pass  # transient read errors must not crash the timer loop
+            pass
 
     def _append(self, key, t, val):
         series = self._series[key]
@@ -311,62 +345,203 @@ class TelemetryPanel(QWidget):
         self._y_axes[chart_idx].setRange(lo - margin, hi + margin)
 
 
+# ── Preferences dialog ────────────────────────────────────────────────────────
+
+class PreferencesDialog(QDialog):
+    def __init__(self, parent=None, settings=None):
+        super().__init__(parent)
+        self.setWindowTitle("Preferences")
+        self.setMinimumWidth(360)
+
+        if settings is None:
+            settings = {}
+        self._settings = dict(settings)
+
+        layout = QVBoxLayout(self)
+
+        # ── Charts section ────────────────────────────────────────────────────
+        charts_group = QGroupBox("Charts")
+        charts_form = QFormLayout(charts_group)
+
+        self._poll_interval = QSpinBox()
+        self._poll_interval.setRange(50, 5000)
+        self._poll_interval.setSuffix(" ms")
+        self._poll_interval.setValue(settings.get('poll_interval_ms', 200))
+        charts_form.addRow("Update interval:", self._poll_interval)
+
+        self._max_samples = QSpinBox()
+        self._max_samples.setRange(10, 10000)
+        self._max_samples.setValue(settings.get('max_samples', 300))
+        charts_form.addRow("Max samples:", self._max_samples)
+
+        self._time_window = QSpinBox()
+        self._time_window.setRange(5, 600)
+        self._time_window.setSuffix(" s")
+        self._time_window.setValue(settings.get('time_window_s', 60))
+        charts_form.addRow("Time window:", self._time_window)
+
+        layout.addWidget(charts_group)
+
+        # ── LED Matrix section ────────────────────────────────────────────────
+        matrix_group = QGroupBox("LED Matrix")
+        matrix_form = QFormLayout(matrix_group)
+
+        self._cell_size = QSpinBox()
+        self._cell_size.setRange(10, 80)
+        self._cell_size.setSuffix(" px/cell")
+        self._cell_size.setValue(settings.get('cell_size', 40))
+        matrix_form.addRow("Cell size:", self._cell_size)
+
+        layout.addWidget(matrix_group)
+
+        # ── Emulator section ──────────────────────────────────────────────────
+        emu_group = QGroupBox("Emulator")
+        emu_form = QFormLayout(emu_group)
+
+        self._led_refresh = QSpinBox()
+        self._led_refresh.setRange(50, 2000)
+        self._led_refresh.setSuffix(" ms")
+        self._led_refresh.setValue(settings.get('led_refresh_ms', 100))
+        emu_form.addRow("LED refresh interval:", self._led_refresh)
+
+        layout.addWidget(emu_group)
+
+        # ── Buttons ───────────────────────────────────────────────────────────
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_settings(self):
+        return {
+            'poll_interval_ms': self._poll_interval.value(),
+            'max_samples': self._max_samples.value(),
+            'time_window_s': self._time_window.value(),
+            'cell_size': self._cell_size.value(),
+            'led_refresh_ms': self._led_refresh.value(),
+        }
+
+
 # ── Main window ───────────────────────────────────────────────────────────────
 
 class SenseEmuDesktop(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Sense HAT Emulator")
-        self.setGeometry(100, 100, 1200, 750)
+        self.setGeometry(100, 100, 1200, 800)
         self.controller = EmulatorController()
+
+        self._settings = {
+            'poll_interval_ms': 200,
+            'max_samples': 300,
+            'time_window_s': 60,
+            'cell_size': 40,
+            'led_refresh_ms': 100,
+        }
 
         # ── Top section ───────────────────────────────────────────────────────
         top_widget = QWidget()
         top_layout = QHBoxLayout(top_widget)
+        top_layout.setSpacing(8)
 
-        # Left: LED Matrix
-        self.matrix = LEDMatrixWidget(self.controller.screen)
-        top_layout.addWidget(self.matrix, 1)
+        # Left: LED Matrix in a GroupBox
+        matrix_group = QGroupBox("LED Matrix (8×8)")
+        matrix_vbox = QVBoxLayout(matrix_group)
+        matrix_vbox.setAlignment(Qt.AlignHCenter)
+
+        self.matrix = LEDMatrixWidget(
+            self.controller.screen,
+            cell_size=self._settings['cell_size'],
+        )
+        self.matrix.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        matrix_vbox.addWidget(self.matrix, 0, Qt.AlignHCenter)
+
+        # Cell size control below the matrix
+        size_row = QHBoxLayout()
+        size_row.addWidget(QLabel("Size:"))
+        self._matrix_size_spin = QSpinBox()
+        self._matrix_size_spin.setRange(10, 80)
+        self._matrix_size_spin.setSuffix(" px")
+        self._matrix_size_spin.setValue(self._settings['cell_size'])
+        self._matrix_size_spin.valueChanged.connect(self._on_matrix_size_changed)
+        size_row.addWidget(self._matrix_size_spin)
+        size_row.addStretch()
+        matrix_vbox.addLayout(size_row)
+
+        top_layout.addWidget(matrix_group, 0)
 
         # Right: scrollable controls
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         controls_container = QWidget()
         controls_layout = QVBoxLayout(controls_container)
-        controls_layout.setSpacing(10)
+        controls_layout.setSpacing(8)
 
         self.sliders = {}
 
-        def create_slider_in_group(layout, name, min_val, max_val, default):
-            lbl = QLabel(f"{name}: {default}")
+        def create_slider_row(layout, name, min_val, max_val, default):
+            row = QHBoxLayout()
+            lbl = QLabel(f"{name}:")
+            lbl.setFixedWidth(90)
+            val_lbl = QLabel(str(default))
+            val_lbl.setFixedWidth(40)
             slider = QSlider(Qt.Horizontal)
             slider.setRange(min_val, max_val)
             slider.setValue(default)
 
             def on_change(val):
-                lbl.setText(f"{name}: {val}")
+                val_lbl.setText(str(val))
                 self.update_sensors()
 
             slider.valueChanged.connect(on_change)
             self.sliders[name] = slider
-            layout.addWidget(lbl)
-            layout.addWidget(slider)
+            row.addWidget(lbl)
+            row.addWidget(slider)
+            row.addWidget(val_lbl)
+            layout.addLayout(row)
 
-        # IMU
+        # IMU group
         imu_group = QGroupBox("IMU (Orientation)")
         imu_layout = QVBoxLayout(imu_group)
-        create_slider_in_group(imu_layout, "Pitch", -180, 180, 0)
-        create_slider_in_group(imu_layout, "Roll", -180, 180, 0)
-        create_slider_in_group(imu_layout, "Yaw", 0, 360, 0)
+        create_slider_row(imu_layout, "Pitch", -180, 180, 0)
+        create_slider_row(imu_layout, "Roll", -180, 180, 0)
+        create_slider_row(imu_layout, "Yaw", 0, 360, 0)
         controls_layout.addWidget(imu_group)
 
-        # Environmental Sensors
+        # Environmental sensors + Joystick on the same row
+        env_joy_row = QHBoxLayout()
+        env_joy_row.setSpacing(8)
+
         env_group = QGroupBox("Environmental Sensors")
         env_layout = QVBoxLayout(env_group)
-        create_slider_in_group(env_layout, "Temperature", -40, 120, 20)
-        create_slider_in_group(env_layout, "Pressure", 260, 1260, 1013)
-        create_slider_in_group(env_layout, "Humidity", 0, 100, 45)
-        controls_layout.addWidget(env_group)
+        create_slider_row(env_layout, "Temperature", -40, 120, 20)
+        create_slider_row(env_layout, "Pressure", 260, 1260, 1013)
+        create_slider_row(env_layout, "Humidity", 0, 100, 45)
+        env_joy_row.addWidget(env_group, 2)
+
+        joy_group = QGroupBox("Joystick")
+        joy_layout = QGridLayout(joy_group)
+        joy_layout.setSpacing(4)
+        up_btn    = QPushButton("↑")
+        down_btn  = QPushButton("↓")
+        left_btn  = QPushButton("←")
+        right_btn = QPushButton("→")
+        mid_btn   = QPushButton("OK")
+        for btn in (up_btn, down_btn, left_btn, right_btn, mid_btn):
+            btn.setFixedSize(42, 32)
+        up_btn.clicked.connect(lambda:    self._on_stick_press("UP"))
+        down_btn.clicked.connect(lambda:  self._on_stick_press("DOWN"))
+        left_btn.clicked.connect(lambda:  self._on_stick_press("LEFT"))
+        right_btn.clicked.connect(lambda: self._on_stick_press("RIGHT"))
+        mid_btn.clicked.connect(lambda:   self._on_stick_press("MIDDLE"))
+        joy_layout.addWidget(up_btn,    0, 1)
+        joy_layout.addWidget(left_btn,  1, 0)
+        joy_layout.addWidget(mid_btn,   1, 1)
+        joy_layout.addWidget(right_btn, 1, 2)
+        joy_layout.addWidget(down_btn,  2, 1)
+        env_joy_row.addWidget(joy_group, 1)
+
+        controls_layout.addLayout(env_joy_row)
 
         # Telemetry source selector
         source_group = QGroupBox("Telemetry source")
@@ -388,25 +563,6 @@ class SenseEmuDesktop(QMainWindow):
         self._btn_rec.clicked.connect(self._open_recording)
         controls_layout.addWidget(source_group)
 
-        # Joystick
-        joy_group = QGroupBox("Joystick")
-        joy_layout = QGridLayout(joy_group)
-        up_btn    = QPushButton("↑ UP")
-        down_btn  = QPushButton("↓ DOWN")
-        left_btn  = QPushButton("← LEFT")
-        right_btn = QPushButton("RIGHT →")
-        mid_btn   = QPushButton("ENTER")
-        up_btn.clicked.connect(lambda:    self._on_stick_press("UP"))
-        down_btn.clicked.connect(lambda:  self._on_stick_press("DOWN"))
-        left_btn.clicked.connect(lambda:  self._on_stick_press("LEFT"))
-        right_btn.clicked.connect(lambda: self._on_stick_press("RIGHT"))
-        mid_btn.clicked.connect(lambda:   self._on_stick_press("MIDDLE"))
-        joy_layout.addWidget(up_btn,    0, 1)
-        joy_layout.addWidget(left_btn,  1, 0)
-        joy_layout.addWidget(mid_btn,   1, 1)
-        joy_layout.addWidget(right_btn, 1, 2)
-        joy_layout.addWidget(down_btn,  2, 1)
-        controls_layout.addWidget(joy_group)
         controls_layout.addStretch()
 
         scroll.setWidget(controls_container)
@@ -419,7 +575,11 @@ class SenseEmuDesktop(QMainWindow):
         splitter = QSplitter(Qt.Vertical)
         splitter.addWidget(top_widget)
         splitter.addWidget(self.telemetry)
-        splitter.setSizes([420, 280])
+        splitter.setCollapsible(0, False)
+        splitter.setCollapsible(1, False)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([420, 330])
 
         main_widget = QWidget()
         QVBoxLayout(main_widget).addWidget(splitter)
@@ -462,10 +622,11 @@ class SenseEmuDesktop(QMainWindow):
         self._act_telemetry.toggled.connect(self._toggle_telemetry)
         view_menu.addAction(self._act_telemetry)
 
-        # Settings (stub)
+        # Settings
         settings_menu = mb.addMenu("&Settings")
-        act_prefs = QAction("Preferences…", self)
-        act_prefs.setEnabled(False)
+        act_prefs = QAction("&Preferences…", self)
+        act_prefs.setShortcut(QKeySequence("Ctrl+,"))
+        act_prefs.triggered.connect(self._open_preferences)
         settings_menu.addAction(act_prefs)
 
         # Help
@@ -489,6 +650,27 @@ class SenseEmuDesktop(QMainWindow):
             f'<small>PySide6 {pyside_ver} &nbsp;·&nbsp; '
             f'Python {sys.version.split()[0]}</small>',
         )
+
+    def _open_preferences(self):
+        dlg = PreferencesDialog(self, settings=self._settings)
+        if dlg.exec() == QDialog.Accepted:
+            new_settings = dlg.get_settings()
+            self._settings.update(new_settings)
+            self._apply_settings()
+
+    def _apply_settings(self):
+        self.telemetry.apply_settings(self._settings)
+        cell_size = self._settings.get('cell_size', 40)
+        self.matrix.set_cell_size(cell_size)
+        self._matrix_size_spin.blockSignals(True)
+        self._matrix_size_spin.setValue(cell_size)
+        self._matrix_size_spin.blockSignals(False)
+        led_refresh = self._settings.get('led_refresh_ms', 100)
+        self.matrix.timer.setInterval(led_refresh)
+
+    def _on_matrix_size_changed(self, value):
+        self._settings['cell_size'] = value
+        self.matrix.set_cell_size(value)
 
     # ── Source actions ────────────────────────────────────────────────────────
 

@@ -50,7 +50,6 @@ class TestLEDMatrixWidget:
         from sense_emu.pyside_app import LEDMatrixWidget
         widget = LEDMatrixWidget()
         qtbot.addWidget(widget)
-        # Write 192 non-zero bytes
         with open(tmp_screen_file, 'r+b') as f:
             f.seek(0)
             f.write(bytes(range(192)))
@@ -59,7 +58,6 @@ class TestLEDMatrixWidget:
 
     def test_update_matrix_with_full_192_bytes(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import LEDMatrixWidget
-        # Extend the screen file to exactly 192 bytes
         with open(tmp_screen_file, 'r+b') as f:
             f.write(b'\x00' * 192)
         widget = LEDMatrixWidget()
@@ -108,6 +106,118 @@ class TestLEDMatrixWidget:
             widget.timer.stop()
             event = QPaintEvent(QRect(0, 0, 320, 320))
             widget.paintEvent(event)
+
+    def test_has_height_for_width(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        widget = LEDMatrixWidget()
+        qtbot.addWidget(widget)
+        assert widget.hasHeightForWidth() is True
+
+    def test_height_for_width_returns_width(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        widget = LEDMatrixWidget()
+        qtbot.addWidget(widget)
+        assert widget.heightForWidth(200) == 200
+        assert widget.heightForWidth(400) == 400
+
+    def test_set_cell_size_updates_minimum(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        widget = LEDMatrixWidget()
+        qtbot.addWidget(widget)
+        widget.set_cell_size(20)
+        assert widget.minimumWidth() == 160
+        assert widget.minimumHeight() == 160
+
+    def test_set_cell_size_clamps_minimum(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        widget = LEDMatrixWidget()
+        qtbot.addWidget(widget)
+        widget.set_cell_size(1)  # below minimum
+        assert widget.cell_size() == 10
+
+    def test_custom_cell_size_at_init(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        widget = LEDMatrixWidget(cell_size=30)
+        qtbot.addWidget(widget)
+        assert widget.minimumWidth() == 240
+        assert widget.minimumHeight() == 240
+
+    def test_size_hint_is_square(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        widget = LEDMatrixWidget(cell_size=40)
+        qtbot.addWidget(widget)
+        hint = widget.sizeHint()
+        assert hint.width() == hint.height() == 320
+
+
+class TestPreferencesDialog:
+    def test_init_creates_dialog(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        dlg = PreferencesDialog()
+        qtbot.addWidget(dlg)
+        assert dlg is not None
+
+    def test_default_settings(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        dlg = PreferencesDialog()
+        qtbot.addWidget(dlg)
+        s = dlg.get_settings()
+        assert s['poll_interval_ms'] == 200
+        assert s['max_samples'] == 300
+        assert s['time_window_s'] == 60
+        assert s['cell_size'] == 40
+        assert s['led_refresh_ms'] == 100
+
+    def test_custom_settings_applied(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        settings = {
+            'poll_interval_ms': 500,
+            'max_samples': 150,
+            'time_window_s': 30,
+            'cell_size': 25,
+            'led_refresh_ms': 200,
+        }
+        dlg = PreferencesDialog(settings=settings)
+        qtbot.addWidget(dlg)
+        s = dlg.get_settings()
+        assert s['poll_interval_ms'] == 500
+        assert s['max_samples'] == 150
+        assert s['time_window_s'] == 30
+        assert s['cell_size'] == 25
+        assert s['led_refresh_ms'] == 200
+
+    def test_get_settings_returns_dict(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        dlg = PreferencesDialog()
+        qtbot.addWidget(dlg)
+        s = dlg.get_settings()
+        assert isinstance(s, dict)
+        assert 'poll_interval_ms' in s
+        assert 'max_samples' in s
+        assert 'time_window_s' in s
+        assert 'cell_size' in s
+        assert 'led_refresh_ms' in s
+
+    def test_spinbox_ranges_poll_interval(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        dlg = PreferencesDialog()
+        qtbot.addWidget(dlg)
+        assert dlg._poll_interval.minimum() == 50
+        assert dlg._poll_interval.maximum() == 5000
+
+    def test_spinbox_ranges_max_samples(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        dlg = PreferencesDialog()
+        qtbot.addWidget(dlg)
+        assert dlg._max_samples.minimum() == 10
+        assert dlg._max_samples.maximum() == 10000
+
+    def test_spinbox_ranges_cell_size(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        dlg = PreferencesDialog()
+        qtbot.addWidget(dlg)
+        assert dlg._cell_size.minimum() == 10
+        assert dlg._cell_size.maximum() == 80
 
 
 class TestSenseEmuDesktop:
@@ -193,6 +303,99 @@ class TestSenseEmuDesktop:
             window = SenseEmuDesktop()
             qtbot.addWidget(window)
             window._open_recording()  # should not raise when dialog is cancelled
+
+    def test_has_led_matrix_widget(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop, LEDMatrixWidget
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            assert isinstance(window.matrix, LEDMatrixWidget)
+
+    def test_has_matrix_size_spinbox(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            assert window._matrix_size_spin is not None
+
+    def test_matrix_size_spin_changes_cell_size(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            window._matrix_size_spin.setValue(20)
+            assert window.matrix.cell_size() == 20
+
+    def test_default_settings_keys(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            for key in ('poll_interval_ms', 'max_samples', 'time_window_s',
+                        'cell_size', 'led_refresh_ms'):
+                assert key in window._settings
+
+    def test_apply_settings_updates_matrix(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            window._settings['cell_size'] = 30
+            window._apply_settings()
+            assert window.matrix.cell_size() == 30
+
+    def test_apply_settings_updates_led_refresh(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            window._settings['led_refresh_ms'] = 250
+            window._apply_settings()
+            assert window.matrix.timer.interval() == 250
+
+    def test_open_preferences_dialog_cancelled(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            original_cell = window._settings['cell_size']
+            with patch('sense_emu.pyside_app.PreferencesDialog') as mock_dlg_cls:
+                mock_dlg = MagicMock()
+                mock_dlg.exec.return_value = 0  # QDialog.Rejected
+                mock_dlg_cls.return_value = mock_dlg
+                window._open_preferences()
+            # Settings should not change when dialog is cancelled
+            assert window._settings['cell_size'] == original_cell
+
+    def test_open_preferences_dialog_accepted(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        from PySide6.QtWidgets import QDialog
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            new_settings = {
+                'poll_interval_ms': 400,
+                'max_samples': 200,
+                'time_window_s': 45,
+                'cell_size': 35,
+                'led_refresh_ms': 150,
+            }
+            with patch('sense_emu.pyside_app.PreferencesDialog') as mock_dlg_cls:
+                mock_dlg = MagicMock()
+                mock_dlg.exec.return_value = QDialog.Accepted
+                mock_dlg.get_settings.return_value = new_settings
+                mock_dlg_cls.return_value = mock_dlg
+                window._open_preferences()
+            assert window._settings['cell_size'] == 35
+            assert window._settings['max_samples'] == 200
 
 
 class TestTelemetryPanel:
@@ -298,6 +501,48 @@ class TestTelemetryPanel:
         assert panel._series['pressure'].count() == 5
         panel.clear()
         assert panel._series['pressure'].count() == 0
+
+    def test_apply_settings_max_samples(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import TelemetryPanel
+        panel = TelemetryPanel()
+        qtbot.addWidget(panel)
+        panel.apply_settings({'max_samples': 50})
+        assert panel._max_samples == 50
+
+    def test_apply_settings_poll_interval(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import TelemetryPanel
+        panel = TelemetryPanel()
+        qtbot.addWidget(panel)
+        panel.apply_settings({'poll_interval_ms': 500})
+        assert panel._poll_interval_ms == 500
+
+    def test_apply_settings_time_window(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import TelemetryPanel
+        panel = TelemetryPanel()
+        qtbot.addWidget(panel)
+        panel.apply_settings({'time_window_s': 30})
+        assert panel._time_window_s == 30
+
+    def test_apply_settings_updates_active_timer(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import TelemetryPanel
+        panel = TelemetryPanel()
+        qtbot.addWidget(panel)
+        panel.set_live(_make_mock_hat())
+        panel.apply_settings({'poll_interval_ms': 400})
+        assert panel._timer.interval() == 400
+        panel._timer.stop()
+
+    def test_default_poll_interval(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import TelemetryPanel
+        panel = TelemetryPanel()
+        qtbot.addWidget(panel)
+        assert panel._poll_interval_ms == 200
+
+    def test_default_time_window(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import TelemetryPanel
+        panel = TelemetryPanel()
+        qtbot.addWidget(panel)
+        assert panel._time_window_s == 60
 
 
 class TestParseRecording:

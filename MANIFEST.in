@@ -1,2 +1,10 @@
 include README.rst
+include README.md
 include LICENSE.txt
+include INSTALL.md
+include DEVELOPMENT.md
+include pyproject.toml
+recursive-include sense_emu *.png *.svg *.txt *.py
+recursive-include sense_emu/locale *.mo *.po
+recursive-include docs *.rst *.py *.png
+recursive-include tests *.py
