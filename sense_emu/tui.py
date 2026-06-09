@@ -342,7 +342,13 @@ class SenseEmuTUI(App):
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
     def on_mount(self):
-        self.controller = EmulatorController()
+        try:
+            self.controller = EmulatorController()
+        except RuntimeError:
+            self.exit(
+                message='Another instance of the Sense HAT emulator is already running.\n'
+                        'Please close it before starting a new one.')
+            return
         self.query_one(LEDMatrix).set_screen_client(self.controller.screen)
         self._activate_emulator()
 

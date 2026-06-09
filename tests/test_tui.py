@@ -586,6 +586,19 @@ class TestSenseEmuTUI:
         app._set_status("[green]OK[/green]")
         mock_label.update.assert_called_once_with("[green]OK[/green]")
 
+    def test_on_mount_single_instance_error(self, patch_emulator):
+        """RuntimeError from EmulatorController calls self.exit() with a message."""
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        with patch('sense_emu.tui.EmulatorController',
+                   side_effect=RuntimeError('already running')), \
+             patch.object(app, 'exit') as mock_exit:
+            app.on_mount()
+        mock_exit.assert_called_once()
+        msg = mock_exit.call_args[1].get('message', '') or mock_exit.call_args[0][0]
+        assert 'running' in msg.lower() or 'instance' in msg.lower() or 'emulator' in msg.lower()
+        assert not hasattr(app, 'controller')
+
 
 # ── RecordingPathScreen ───────────────────────────────────────────────────────
 

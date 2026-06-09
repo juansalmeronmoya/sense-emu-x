@@ -434,6 +434,38 @@ class TestSenseEmuDesktop:
             assert isinstance(window._qsettings, QSettings)
 
 
+class TestSingleInstanceError:
+    """GUI main() must show a friendly warning when emulator is already running."""
+
+    def test_runtime_error_shows_warning_and_exits(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import main
+        with patch('sense_emu.pyside_app.QApplication') as mock_app_cls, \
+             patch('sense_emu.pyside_app.SenseEmuDesktop',
+                   side_effect=RuntimeError('already running')), \
+             patch('sense_emu.pyside_app.QMessageBox') as mock_msgbox, \
+             patch('sys.exit') as mock_exit:
+            mock_app_cls.return_value = MagicMock()
+            main()
+        mock_msgbox.warning.assert_called_once()
+        mock_msgbox.critical.assert_not_called()
+        warn_args = mock_msgbox.warning.call_args[0]
+        body = warn_args[2]
+        assert 'running' in body.lower() or 'emulator' in body.lower()
+        mock_exit.assert_called_once_with(1)
+
+    def test_other_exception_shows_critical(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import main
+        with patch('sense_emu.pyside_app.QApplication') as mock_app_cls, \
+             patch('sense_emu.pyside_app.SenseEmuDesktop',
+                   side_effect=OSError('disk full')), \
+             patch('sense_emu.pyside_app.QMessageBox') as mock_msgbox, \
+             patch('sys.exit') as mock_exit:
+            mock_app_cls.return_value = MagicMock()
+            main()
+        mock_msgbox.critical.assert_called_once()
+        mock_exit.assert_called_once_with(1)
+
+
 class TestJoystickEvents:
     """The GUI joystick must send real evdev events to the StickServer."""
 
@@ -792,14 +824,27 @@ class TestPysideMainFunction:
             main()
         mock_exit.assert_called_once_with(0)
 
-    def test_main_shows_dialog_on_exception(self, tmp_screen_file, emulator):
+    def test_main_shows_critical_on_non_runtime_exception(self, tmp_screen_file, emulator):
         from sense_emu.pyside_app import main
         with patch('sense_emu.pyside_app.QApplication') as mock_app_cls, \
              patch('sense_emu.pyside_app.SenseEmuDesktop',
-                   side_effect=RuntimeError('test error')), \
+                   side_effect=OSError('disk full')), \
              patch('sense_emu.pyside_app.QMessageBox') as mock_msgbox, \
              patch('sys.exit') as mock_exit:
             mock_app_cls.return_value = MagicMock()
             main()
         mock_msgbox.critical.assert_called_once()
+        mock_exit.assert_called_once_with(1)
+
+    def test_main_shows_warning_on_runtime_error(self, tmp_screen_file, emulator):
+        from sense_emu.pyside_app import main
+        with patch('sense_emu.pyside_app.QApplication') as mock_app_cls, \
+             patch('sense_emu.pyside_app.SenseEmuDesktop',
+                   side_effect=RuntimeError('already running')), \
+             patch('sense_emu.pyside_app.QMessageBox') as mock_msgbox, \
+             patch('sys.exit') as mock_exit:
+            mock_app_cls.return_value = MagicMock()
+            main()
+        mock_msgbox.warning.assert_called_once()
+        mock_msgbox.critical.assert_not_called()
         mock_exit.assert_called_once_with(1)

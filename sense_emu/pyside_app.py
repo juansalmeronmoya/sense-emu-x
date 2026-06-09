@@ -765,14 +765,21 @@ def main():
     app = QApplication(sys.argv)
     try:
         window = SenseEmuDesktop()
-        window.show()
-        sys.exit(app.exec())
-    except Exception as e:
+    except RuntimeError as e:
+        QMessageBox.warning(
+            None, 'Sense HAT Emulator — Already running',
+            'Another instance of the Sense HAT emulator is already running.\n\n'
+            'Please close it before starting a new one.')
+        sys.exit(1)
+    except Exception:
         import traceback
         QMessageBox.critical(
             None, 'Sense HAT Emulator — Error',
             f'Could not start the emulator:\n\n{traceback.format_exc()}')
         sys.exit(1)
+    else:
+        window.show()
+        sys.exit(app.exec())
 
 
 if __name__ == "__main__":
