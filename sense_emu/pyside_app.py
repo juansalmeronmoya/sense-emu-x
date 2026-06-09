@@ -714,6 +714,22 @@ class SenseEmuDesktop(QMainWindow):
         humidity = self.sliders["Humidity"].value()
         self.controller.humidity.set_values(humidity, temp)
 
+    def keyPressEvent(self, event):
+        _arrow_map = {
+            Qt.Key_Up:     "UP",
+            Qt.Key_Down:   "DOWN",
+            Qt.Key_Left:   "LEFT",
+            Qt.Key_Right:  "RIGHT",
+            Qt.Key_Return: "MIDDLE",
+            Qt.Key_Enter:  "MIDDLE",
+        }
+        direction = _arrow_map.get(event.key())
+        if direction is not None:
+            self._on_stick_press(direction)
+            event.accept()
+        else:
+            super().keyPressEvent(event)
+
     def closeEvent(self, event):
         self.telemetry._timer.stop()
         self.controller.close()

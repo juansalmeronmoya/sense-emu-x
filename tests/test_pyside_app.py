@@ -5,6 +5,8 @@ from unittest.mock import patch, MagicMock
 
 pytest.importorskip('PySide6')
 
+from PySide6.QtCore import Qt
+
 
 @pytest.fixture(autouse=True)
 def patch_screen(tmp_screen_file):
@@ -396,6 +398,74 @@ class TestSenseEmuDesktop:
                 window._open_preferences()
             assert window._settings['cell_size'] == 35
             assert window._settings['max_samples'] == 200
+
+
+class TestKeyboardJoystick:
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def _press_key(self, window, qt_key):
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtCore import QEvent
+        event = QKeyEvent(QEvent.KeyPress, qt_key, Qt.NoModifier)
+        window.keyPressEvent(event)
+        return event
+
+    def test_arrow_up_calls_stick(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window, '_on_stick_press') as mock:
+            self._press_key(window, Qt.Key_Up)
+            mock.assert_called_once_with("UP")
+
+    def test_arrow_down_calls_stick(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window, '_on_stick_press') as mock:
+            self._press_key(window, Qt.Key_Down)
+            mock.assert_called_once_with("DOWN")
+
+    def test_arrow_left_calls_stick(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window, '_on_stick_press') as mock:
+            self._press_key(window, Qt.Key_Left)
+            mock.assert_called_once_with("LEFT")
+
+    def test_arrow_right_calls_stick(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window, '_on_stick_press') as mock:
+            self._press_key(window, Qt.Key_Right)
+            mock.assert_called_once_with("RIGHT")
+
+    def test_return_calls_stick_middle(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window, '_on_stick_press') as mock:
+            self._press_key(window, Qt.Key_Return)
+            mock.assert_called_once_with("MIDDLE")
+
+    def test_enter_calls_stick_middle(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window, '_on_stick_press') as mock:
+            self._press_key(window, Qt.Key_Enter)
+            mock.assert_called_once_with("MIDDLE")
+
+    def test_other_key_does_not_call_stick(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window, '_on_stick_press') as mock:
+            self._press_key(window, Qt.Key_Space)
+            mock.assert_not_called()
+
+    def test_arrow_key_event_accepted(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window, '_on_stick_press'):
+            from PySide6.QtGui import QKeyEvent
+            from PySide6.QtCore import QEvent
+            event = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)
+            window.keyPressEvent(event)
+            assert event.isAccepted()
 
 
 class TestTelemetryPanel:

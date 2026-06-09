@@ -302,10 +302,12 @@ class TestSenseEmuTUI:
         assert 'ctrl+q' in keys
         assert 'ctrl+o' in keys
         assert 'up'     in keys
-        assert 'down'   in keys
-        assert 'left'   in keys
-        assert 'right'  in keys
-        assert 'enter'  in keys
+
+    def test_arrow_bindings_have_priority(self):
+        from sense_emu.tui import SenseEmuTUI
+        priority_keys = {b.key for b in SenseEmuTUI.BINDINGS if b.priority}
+        for key in ('up', 'down', 'left', 'right', 'enter'):
+            assert key in priority_keys, f"Binding '{key}' must have priority=True"
 
     def test_main_callable(self):
         from sense_emu.tui import main

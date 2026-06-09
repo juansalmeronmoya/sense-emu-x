@@ -282,14 +282,15 @@ class SenseEmuTUI(App):
     """
 
     BINDINGS = [
-        Binding("ctrl+q", "quit",             "Quit",             show=True),
-        Binding("ctrl+o", "open_recording",   "Open Recording",   show=True),
-        Binding("ctrl+e", "use_emulator",     "Emulator",         show=True),
-        Binding("up",     "joy_up",           "↑ Up",             show=True),
-        Binding("down",   "joy_down",         "↓ Down",           show=True),
-        Binding("left",   "joy_left",         "← Left",           show=True),
-        Binding("right",  "joy_right",        "→ Right",          show=True),
-        Binding("enter",  "joy_enter",        "● Enter",          show=True),
+        Binding("ctrl+q", "quit",           "Quit",           show=True),
+        Binding("ctrl+o", "open_recording", "Open Recording", show=True),
+        Binding("ctrl+e", "use_emulator",   "Emulator",       show=True),
+        # priority=True so these fire even when an Input widget has focus
+        Binding("up",    "joy_up",    "↑", show=True, priority=True),
+        Binding("down",  "joy_down",  "↓", show=True, priority=True),
+        Binding("left",  "joy_left",  "←", show=True, priority=True),
+        Binding("right", "joy_right", "→", show=True, priority=True),
+        Binding("enter", "joy_enter", "●", show=True, priority=True),
     ]
 
     def compose(self) -> ComposeResult:
