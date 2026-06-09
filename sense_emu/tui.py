@@ -11,28 +11,9 @@ from textual.screen import ModalScreen
 from .core import EmulatorController
 from .screen import screen_filename
 from .stick import SenseStick, make_stick_event
-from .common import HEADER_REC, DATA_REC, DataRecord
+from .recfile import parse_recording
 
-
-# ── Recording parser ──────────────────────────────────────────────────────────
-
-def _parse_recording(path):
-    records = []
-    with open(path, 'rb') as f:
-        header_buf = f.read(HEADER_REC.size)
-        if len(header_buf) < HEADER_REC.size:
-            raise ValueError('Invalid recording file')
-        magic, ver, _ = HEADER_REC.unpack(header_buf)
-        if magic != b'SENSEHAT' or ver != 1:
-            raise ValueError('Invalid recording file')
-        while True:
-            buf = f.read(DATA_REC.size)
-            if not buf:
-                break
-            if len(buf) < DATA_REC.size:
-                raise ValueError('Truncated record')
-            records.append(DataRecord(*DATA_REC.unpack(buf)))
-    return records
+_parse_recording = parse_recording
 
 
 # ── Joystick event constants (canonical values live in stick.SenseStick) ──────
