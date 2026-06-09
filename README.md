@@ -1,5 +1,6 @@
 # Sense HAT Emulator for Windows/Linux/macOS
 
+⚠️UNDER DEVELOPMENT⚠️
 A functional emulator of the **Sense HAT for Raspberry Pi** that works on Windows, Linux, and macOS. Simulates all sensors (temperature, pressure, humidity, gyroscope, accelerometer) with an interactive graphical interface.
 
 ![Sense HAT Emulator](sense_emu/sense_emu_gui.png)
