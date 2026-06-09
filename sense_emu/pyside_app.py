@@ -15,7 +15,7 @@ from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 
 from .core import EmulatorController
 from .screen import screen_filename, ScreenWriter
-from .stick import SenseStick, STICK_KEYS, make_stick_event
+from .stick import SenseStick, STICK_KEYS, make_stick_event, rotate_key
 from .recfile import parse_recording
 from .playback import Player
 from .recorder import Recorder
@@ -56,6 +56,7 @@ class LEDMatrixWidget(QWidget):
         self._screen_client = screen_client
         self._paint_mode = False
         self._paint_color = QColor(255, 255, 255)
+        self._rotation = 0  # degrees: 0, 90, 180, 270
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_matrix)
@@ -85,11 +86,21 @@ class LEDMatrixWidget(QWidget):
         side = self._cell_size * 8
         return QSize(side, side)
 
+    def set_rotation(self, degrees):
+        self._rotation = degrees % 360
+
+    def rotation(self):
+        return self._rotation
+
     def update_matrix(self):
         if self._screen_client is None:
             return
         try:
+            import numpy as np
             rgb = self._screen_client.rgb_array
+            k = (self._rotation // 90) % 4
+            if k:
+                rgb = np.rot90(rgb, k)
             self.matrix_data = rgb.flatten().tobytes()
             self.update()
         except Exception:
@@ -461,7 +472,9 @@ class SenseEmuDesktop(QMainWindow):
             'time_window_s':    self._qsettings.value('time_window_s', 60, type=int),
             'cell_size':        self._qsettings.value('cell_size', 40, type=int),
             'led_refresh_ms':   self._qsettings.value('led_refresh_ms', 100, type=int),
+            'rotation':         self._qsettings.value('rotation', 0, type=int),
         }
+        self._hat_rotation = self._settings['rotation']
 
         # ── Top section ───────────────────────────────────────────────────────
         top_widget = QWidget()
@@ -477,10 +490,11 @@ class SenseEmuDesktop(QMainWindow):
             self.controller.screen,
             cell_size=self._settings['cell_size'],
         )
+        self.matrix.set_rotation(self._hat_rotation)
         self.matrix.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         matrix_vbox.addWidget(self.matrix, 0, Qt.AlignHCenter)
 
-        # Cell size control below the matrix
+        # Cell size + rotation controls below the matrix
         size_row = QHBoxLayout()
         size_row.addWidget(QLabel("Size:"))
         self._matrix_size_spin = QSpinBox()
@@ -489,6 +503,16 @@ class SenseEmuDesktop(QMainWindow):
         self._matrix_size_spin.setValue(self._settings['cell_size'])
         self._matrix_size_spin.valueChanged.connect(self._on_matrix_size_changed)
         size_row.addWidget(self._matrix_size_spin)
+        rot_ccw_btn = QPushButton("↶")
+        rot_ccw_btn.setFixedSize(28, 26)
+        rot_ccw_btn.setToolTip("Rotate 90° counter-clockwise")
+        rot_ccw_btn.clicked.connect(self._rotate_ccw)
+        rot_cw_btn = QPushButton("↷")
+        rot_cw_btn.setFixedSize(28, 26)
+        rot_cw_btn.setToolTip("Rotate 90° clockwise")
+        rot_cw_btn.clicked.connect(self._rotate_cw)
+        size_row.addWidget(rot_ccw_btn)
+        size_row.addWidget(rot_cw_btn)
         size_row.addStretch()
         matrix_vbox.addLayout(size_row)
 
@@ -798,6 +822,22 @@ class SenseEmuDesktop(QMainWindow):
         self._qsettings.setValue('cell_size', value)
         self._qsettings.sync()
 
+    # ── Rotation ──────────────────────────────────────────────────────────────
+
+    def _rotate_ccw(self):
+        self._hat_rotation = (self._hat_rotation - 90) % 360
+        self.matrix.set_rotation(self._hat_rotation)
+        self._settings['rotation'] = self._hat_rotation
+        self._qsettings.setValue('rotation', self._hat_rotation)
+        self._qsettings.sync()
+
+    def _rotate_cw(self):
+        self._hat_rotation = (self._hat_rotation + 90) % 360
+        self.matrix.set_rotation(self._hat_rotation)
+        self._settings['rotation'] = self._hat_rotation
+        self._qsettings.setValue('rotation', self._hat_rotation)
+        self._qsettings.sync()
+
     # ── Paint mode ────────────────────────────────────────────────────────────
 
     def _on_paint_toggled(self, checked):
@@ -931,16 +971,18 @@ class SenseEmuDesktop(QMainWindow):
 
     # ── Sensor control ────────────────────────────────────────────────────────
 
+    def _rotated_key(self, direction):
+        raw = STICK_KEYS[direction.lower()]
+        return rotate_key(raw, self._hat_rotation)
+
     def _on_stick_press(self, direction):
         """Click-style press+release (used by keyboard events without hold)."""
-        key = STICK_KEYS[direction.lower()]
-        self.controller.stick.send(
-            make_stick_event(key, SenseStick.STATE_PRESS))
-        self.controller.stick.send(
-            make_stick_event(key, SenseStick.STATE_RELEASE))
+        key = self._rotated_key(direction)
+        self.controller.stick.send(make_stick_event(key, SenseStick.STATE_PRESS))
+        self.controller.stick.send(make_stick_event(key, SenseStick.STATE_RELEASE))
 
     def _stick_pressed(self, direction):
-        key = STICK_KEYS[direction.lower()]
+        key = self._rotated_key(direction)
         self.controller.stick.send(make_stick_event(key, SenseStick.STATE_PRESS))
         self._hold_direction = direction
         self._hold_timer.start(250)
@@ -948,13 +990,13 @@ class SenseEmuDesktop(QMainWindow):
     def _stick_released(self, direction):
         self._hold_timer.stop()
         self._hold_direction = None
-        key = STICK_KEYS[direction.lower()]
+        key = self._rotated_key(direction)
         self.controller.stick.send(make_stick_event(key, SenseStick.STATE_RELEASE))
 
     def _send_hold(self):
         if self._hold_direction is None:
             return
-        key = STICK_KEYS[self._hold_direction.lower()]
+        key = self._rotated_key(self._hold_direction)
         self.controller.stick.send(make_stick_event(key, SenseStick.STATE_HOLD))
         self._hold_timer.setInterval(100)
 
@@ -982,7 +1024,7 @@ class SenseEmuDesktop(QMainWindow):
         }
         direction = _arrow_map.get(event.key())
         if direction is not None:
-            key = STICK_KEYS[direction.lower()]
+            key = self._rotated_key(direction)
             if event.isAutoRepeat():
                 self.controller.stick.send(make_stick_event(key, SenseStick.STATE_HOLD))
             else:
@@ -1002,7 +1044,7 @@ class SenseEmuDesktop(QMainWindow):
         }
         direction = _arrow_map.get(event.key())
         if direction is not None and not event.isAutoRepeat():
-            key = STICK_KEYS[direction.lower()]
+            key = self._rotated_key(direction)
             self.controller.stick.send(make_stick_event(key, SenseStick.STATE_RELEASE))
             event.accept()
         else:

@@ -1165,6 +1165,85 @@ class TestPaintMode:
         assert cx is None and cy is None
 
 
+class TestRotation:
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def test_default_rotation_zero(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert window.matrix.rotation() == 0
+
+    def test_rotate_cw_increases_by_90(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._rotate_cw()
+        assert window.matrix.rotation() == 90
+
+    def test_rotate_ccw_decreases_by_90(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._rotate_cw()   # → 90
+        window._rotate_ccw()  # → 0
+        assert window.matrix.rotation() == 0
+
+    def test_rotation_wraps_at_360(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        for _ in range(4):
+            window._rotate_cw()
+        assert window.matrix.rotation() == 0
+
+    def test_rotation_persisted_in_settings(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._rotate_cw()
+        assert window._settings['rotation'] == 90
+
+    def test_rotation_roundtrip(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            win1 = SenseEmuDesktop()
+            qtbot.addWidget(win1)
+            win1._rotate_cw()  # 90
+            win1._save_settings()
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            win2 = SenseEmuDesktop()
+            qtbot.addWidget(win2)
+            assert win2.matrix.rotation() == 90
+
+    def test_keyboard_up_remapped_after_rotate_cw(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtCore import QEvent
+        from sense_emu.stick import SenseStick
+        import struct
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._rotate_cw()  # 90° CW → up becomes right
+        with patch.object(window.controller, 'stick') as mock_stick:
+            event = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)
+            window.keyPressEvent(event)
+            window._hold_timer.stop()
+            calls = [struct.unpack(SenseStick.EVENT_FORMAT, c[0][0])
+                     for c in mock_stick.send.call_args_list]
+        assert calls[0][3] == SenseStick.KEY_RIGHT
+
+    def test_matrix_update_applies_rotation(self, qtbot, emulator, tmp_screen_file):
+        import numpy as np
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window.matrix.timer.stop()
+        rgb = np.zeros((8, 8, 3), dtype=np.uint8)
+        rgb[0, 0] = [255, 0, 0]  # red at top-left
+        window.matrix._screen_client = MagicMock()
+        window.matrix._screen_client.rgb_array = rgb
+        window.matrix.set_rotation(90)
+        window.matrix.update_matrix()
+        data = window.matrix.matrix_data
+        # after 90° rot, top-left should not be red any more (red moves to another cell)
+        assert data[0:3] != bytes([255, 0, 0])
+
+
 class TestPysideMainFunction:
     def test_main_calls_sys_exit(self, tmp_screen_file, emulator):
         from sense_emu.pyside_app import main
