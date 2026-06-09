@@ -89,8 +89,11 @@ def init_humidity():
         # Attempt to open the humidity sensor's file and ensure it's the right
         # size
         fd = io.open(humidity_filename(), 'r+b', buffering=0)
-        fd.seek(HUMIDITY_DATA.size)
-        fd.truncate()
+        # Only truncate if size is wrong: avoids Windows PermissionError when
+        # another handle has an active mmap on the same file.
+        if os.fstat(fd.fileno()).st_size != HUMIDITY_DATA.size:
+            fd.seek(HUMIDITY_DATA.size)
+            fd.truncate()
     except IOError as e:
         # If the humidity device's file doesn't exist, create it with
         # reasonable initial values

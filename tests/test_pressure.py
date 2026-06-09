@@ -110,14 +110,11 @@ class TestPressureFilename:
         assert 'rpi-sense-emu-pressure' in result
 
     def test_no_shm_uses_tmp(self):
-        import sys
-        with patch('os.path.exists', return_value=False), \
-             patch('sys.platform', 'linux' if not sys.platform.startswith('win') else 'win32'):
+        with patch('sys.platform', 'linux'), \
+             patch('os.path.exists', return_value=False):
             result = pressure_filename()
-            if sys.platform.startswith('win'):
-                assert 'rpi-sense-emu-pressure' in result
-            else:
-                assert result == '/tmp/rpi-sense-emu-pressure'
+        import os
+        assert result == os.path.join('/tmp', 'rpi-sense-emu-pressure')
 
     def test_windows_path(self):
         with patch('sys.platform', 'win32'), \
@@ -133,6 +130,24 @@ class TestInitPressure:
             fd = init_pressure()
         assert os.path.exists(path)
         fd.close()
+
+    def test_truncates_oversized_file(self, tmp_path):
+        path = str(tmp_path / 'oversized_pressure')
+        with open(path, 'wb') as f:
+            f.write(b'\x00' * (PRESSURE_DATA.size + 50))
+        with patch('sense_emu.pressure.pressure_filename', return_value=path):
+            fd = init_pressure()
+        fd.close()
+        assert os.path.getsize(path) == PRESSURE_DATA.size
+
+    def test_skips_truncate_when_correct_size(self, tmp_path):
+        path = str(tmp_path / 'correct_pressure')
+        with open(path, 'wb') as f:
+            f.write(b'\xAB' * PRESSURE_DATA.size)
+        with patch('sense_emu.pressure.pressure_filename', return_value=path):
+            fd = init_pressure()
+        fd.close()
+        assert os.path.getsize(path) == PRESSURE_DATA.size
 
 
 class TestPressureServerAlreadyInitialized:

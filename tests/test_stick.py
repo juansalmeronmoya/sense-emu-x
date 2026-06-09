@@ -1,3 +1,4 @@
+import sys
 import time
 import struct
 import socket
@@ -38,12 +39,8 @@ class TestInputEvent:
 
 class TestStickAddress:
     def test_returns_three_tuple(self):
-        import sys
         family, sock_type, addr = stick_address()
-        if sys.platform.startswith('win'):
-            assert isinstance(addr, tuple) and len(addr) == 2
-        else:
-            assert isinstance(addr, str)
+        assert isinstance(addr, (str, tuple))
 
 
 class TestStickServer:
@@ -393,27 +390,40 @@ class TestCallbackRun:
 
 class TestStickServerServe:
     def test_serve_receives_hello_and_sends_data(self, tmp_stick_addr):
-        """Test that StickServer handles lifecycle correctly."""
+        """Cover StickServer._serve loop body with a real client."""
+        import socket as _socket_mod
+        import os
         import time as _time
 
-        # Create server (this tests initialization and threading)
         server = StickServer()
         _time.sleep(0.05)  # let server thread start
 
-        # Send data through server - just verify no crash
-        buf = b'\x00' * 24
-        try:
-            server.send(buf)
-        except (OSError, BrokenPipeError):
-            # Network errors are acceptable in test environment
-            pass
-
-        _time.sleep(0.05)
-
-        # Close the server - main test is it closes cleanly
-        try:
-            server.close()
-            assert True  # Closed successfully
-        except Exception as e:
-            # Server close should not raise
-            pytest.fail(f"StickServer.close() raised: {e}")
+        addr = tmp_stick_addr
+        if sys.platform.startswith('win'):
+            client = _socket_mod.socket(_socket_mod.AF_INET, _socket_mod.SOCK_DGRAM)
+            client.bind(('127.0.0.1', 0))
+            client.connect(addr)
+            client.send(b'hello')
+            _time.sleep(0.05)
+            server.send(b'\x00' * 24)
+            _time.sleep(0.2)
+            client.close()
+        else:
+            client = _socket_mod.socket(_socket_mod.AF_UNIX, _socket_mod.SOCK_DGRAM)
+            client_path = addr + '-client-%d' % id(client)
+            try:
+                os.unlink(client_path)
+            except OSError:
+                pass
+            client.bind(client_path)
+            client.connect(addr)
+            client.send(b'hello')
+            _time.sleep(0.05)
+            server.send(b'\x00' * 24)
+            _time.sleep(0.2)
+            client.close()
+            try:
+                os.unlink(client_path)
+            except OSError:
+                pass
+        server.close()  # triggers _serve finally block

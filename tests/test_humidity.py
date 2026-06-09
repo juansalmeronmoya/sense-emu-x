@@ -108,14 +108,11 @@ class TestHumidityFilename:
         assert 'rpi-sense-emu-humidity' in result
 
     def test_no_shm_uses_tmp(self):
-        import sys
-        with patch('os.path.exists', return_value=False), \
-             patch('sys.platform', 'linux' if not sys.platform.startswith('win') else 'win32'):
+        with patch('sys.platform', 'linux'), \
+             patch('os.path.exists', return_value=False):
             result = humidity_filename()
-            if sys.platform.startswith('win'):
-                assert 'rpi-sense-emu-humidity' in result
-            else:
-                assert result == '/tmp/rpi-sense-emu-humidity'
+        import os
+        assert result == os.path.join('/tmp', 'rpi-sense-emu-humidity')
 
     def test_windows_path(self):
         with patch('sys.platform', 'win32'), \
@@ -131,6 +128,24 @@ class TestInitHumidity:
             fd = init_humidity()
         assert os.path.exists(path)
         fd.close()
+
+    def test_truncates_oversized_file(self, tmp_path):
+        path = str(tmp_path / 'oversized_humidity')
+        with open(path, 'wb') as f:
+            f.write(b'\x00' * (HUMIDITY_DATA.size + 50))
+        with patch('sense_emu.humidity.humidity_filename', return_value=path):
+            fd = init_humidity()
+        fd.close()
+        assert os.path.getsize(path) == HUMIDITY_DATA.size
+
+    def test_skips_truncate_when_correct_size(self, tmp_path):
+        path = str(tmp_path / 'correct_humidity')
+        with open(path, 'wb') as f:
+            f.write(b'\xAB' * HUMIDITY_DATA.size)
+        with patch('sense_emu.humidity.humidity_filename', return_value=path):
+            fd = init_humidity()
+        fd.close()
+        assert os.path.getsize(path) == HUMIDITY_DATA.size
 
 
 class TestHumidityServerAlreadyInitialized:

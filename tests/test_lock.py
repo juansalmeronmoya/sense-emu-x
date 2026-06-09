@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import pytest
 from unittest.mock import patch
@@ -13,16 +14,8 @@ class TestPidExists:
         assert pid_exists(999999999) is False
 
     def test_pid_zero(self):
-        # PID 0 handling is platform-specific
-        # On Unix it's always "exists", on Windows it's invalid
-        # Test that the function handles it without crashing
-        try:
-            result = pid_exists(0)
-            # Windows returns False, Unix returns True
-            assert isinstance(result, bool)
-        except (OSError, ValueError):
-            # Some platforms may raise, that's acceptable
-            pass
+        # PID 0 is special — kernel; always considered "exists"
+        assert pid_exists(0) is True
 
 
 class TestLockFilename:
@@ -155,17 +148,12 @@ class TestLockFilenameWindows:
 
 
 class TestPidExistsEPERM:
+    @pytest.mark.skipif(sys.platform == 'win32', reason='Uses os.kill, not available on Windows pid_exists')
     def test_eperm_means_exists(self):
-        # EPERM handling is Unix-specific; test platform-agnostically
         import errno
-        import sys
-        if sys.platform.startswith('win'):
-            # Windows uses different error codes; skip Unix-specific test
-            pytest.skip("EPERM test is Unix-specific")
-        else:
-            with patch('os.kill', side_effect=OSError(errno.EPERM, 'not permitted')):
-                from sense_emu.lock import pid_exists
-                assert pid_exists(1) is True
+        with patch('os.kill', side_effect=OSError(errno.EPERM, 'not permitted')):
+            from sense_emu.lock import pid_exists
+            assert pid_exists(1) is True
 
 
 import errno
@@ -173,18 +161,11 @@ from sense_emu.lock import pid_exists, lock_filename, EmulatorLock
 
 
 class TestPidExistsRaise:
+    @pytest.mark.skipif(sys.platform == 'win32', reason='Uses os.kill, not available on Windows pid_exists')
     def test_raises_on_unexpected_oserror(self):
-        # Error handling is platform-specific
-        # Just verify that pid_exists doesn't crash with unexpected errors
-        import sys
-        try:
-            # Use a high PID that's unlikely to exist
-            result = pid_exists(999999999)
-            # Result should be False for non-existent process
-            assert isinstance(result, bool)
-        except OSError:
-            # Some platforms may raise, that's acceptable
-            assert True
+        with patch('os.kill', side_effect=OSError(errno.EACCES, 'permission denied')):
+            with pytest.raises(OSError):
+                pid_exists(1)
 
 
 class TestLockFilenameWindowsExtended:

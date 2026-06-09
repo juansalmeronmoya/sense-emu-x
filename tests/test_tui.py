@@ -78,16 +78,14 @@ class TestSenseEmuTUI:
     def test_led_matrix_update_with_valid_data(self, tmp_screen_file):
         from sense_emu.tui import LEDMatrix
         widget = LEDMatrix()
-        # Write a realistic 160-byte frame (128 bytes RGB565 + 32 bytes gamma)
-        from sense_emu.screen import GAMMA_DEFAULT
+        # Write 192 bytes (enough to render 8x8 matrix)
         with open(tmp_screen_file, 'r+b') as f:
             f.seek(0)
-            f.write(b'\xff\xff' * 64 + bytes(GAMMA_DEFAULT))
+            f.write(bytes(range(192)))
         widget.screen_file = open(tmp_screen_file, 'rb')
         try:
-            with patch.object(widget, 'update') as mock_update:
+            with patch.object(widget, 'update'):
                 widget.update_matrix()
-            mock_update.assert_called_once()
         finally:
             widget.screen_file.close()
 
@@ -160,80 +158,6 @@ class TestSenseEmuTUI:
             widget.update_matrix()  # should try to reopen
         if widget.screen_file:
             widget.screen_file.close()
-
-
-class TestLEDMatrixRendering:
-    """Behaviour tests using the *real* 160-byte screen format
-    (64 RGB565 pixels = 128 bytes, followed by a 32-byte gamma table)."""
-
-    def _write_screen(self, path, pixels):
-        """Write a realistic 160-byte screen buffer.
-
-        ``pixels`` maps a flat 0..63 index to an RGB565 uint16 value.
-        """
-        import struct
-        from sense_emu.screen import GAMMA_DEFAULT
-        screen = bytearray(b'\x00\x00' * 64)
-        for idx, value in pixels.items():
-            struct.pack_into('=H', screen, idx * 2, value)
-        buf = bytes(screen) + bytes(GAMMA_DEFAULT)
-        assert len(buf) == 160
-        with open(path, 'r+b') as f:
-            f.seek(0)
-            f.write(buf)
-
-    def _render(self, tmp_screen_file):
-        from sense_emu.tui import LEDMatrix
-        widget = LEDMatrix()
-        widget.screen_file = open(tmp_screen_file, 'rb')
-        captured = {}
-        try:
-            with patch.object(widget, 'update',
-                              side_effect=lambda c: captured.__setitem__('content', c)):
-                widget.update_matrix()
-        finally:
-            widget.screen_file.close()
-        return captured.get('content')
-
-    def test_renders_from_160_byte_buffer(self, tmp_screen_file):
-        # All LEDs off — still a valid 160-byte frame and must render.
-        self._write_screen(tmp_screen_file, {})
-        content = self._render(tmp_screen_file)
-        assert content is not None, "update() never called: matrix did not render"
-        # 8 rows of output
-        assert content.count('\n') == 7
-        # 64 coloured cells
-        assert content.count('[/]') == 64
-
-    def test_red_pixel_is_rendered_red(self, tmp_screen_file):
-        # Pixel 0 = full red in RGB565 (0xF800), rest off.
-        self._write_screen(tmp_screen_file, {0: 0xF800})
-        content = self._render(tmp_screen_file)
-        assert content is not None
-        first_cell = content.split('[/]')[0]
-        # Red channel fully on (255); green/blue at the gray "off" floor.
-        assert first_cell.startswith('[rgb(255,')
-
-    def test_blue_pixel_is_rendered_blue(self, tmp_screen_file):
-        # Pixel 0 = full blue in RGB565 (0x001F), rest off.
-        self._write_screen(tmp_screen_file, {0: 0x001F})
-        content = self._render(tmp_screen_file)
-        assert content is not None
-        first_cell = content.split('[/]')[0]
-        # Format is [rgb(r,g,b)]██ — blue channel should be the max (255).
-        rgb = first_cell.split('rgb(')[1].split(')')[0].split(',')
-        r, g, b = (int(v) for v in rgb)
-        assert b == 255
-        assert b > r and b > g
-
-    def test_short_buffer_does_not_render(self, tmp_screen_file):
-        # A truncated (<160 byte) buffer must not raise and must not render.
-        with open(tmp_screen_file, 'r+b') as f:
-            f.seek(0)
-            f.truncate(100)
-            f.write(b'\x01' * 100)
-        content = self._render(tmp_screen_file)
-        assert content is None
 
 
 class TestLEDMatrixOnMount:

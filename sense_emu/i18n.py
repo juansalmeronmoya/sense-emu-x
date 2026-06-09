@@ -20,26 +20,12 @@ import sys
 import os
 import locale
 import gettext as _gettext
-import atexit
-
-try:
-    # Python 3.9+
-    from importlib.resources import files
-except ImportError:
-    # Python 3.8
-    from importlib_resources import files
+import pathlib
 
 from . import __project__
 
 def init_i18n(languages=None):
-    # Figure out where the language catalogs are
-    try:
-        # Python 3.9+
-        locale_pkg = files('sense_emu').joinpath('locale')
-        localedir = str(locale_pkg)
-    except (AttributeError, TypeError):
-        # Fallback: use the filesystem directly
-        localedir = os.path.join(os.path.dirname(__file__), 'locale')
+    localedir = str(pathlib.Path(__file__).parent / 'locale')
     try:
         # Use the user's default locale instead of C
         locale.setlocale(locale.LC_ALL, '')

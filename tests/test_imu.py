@@ -155,14 +155,11 @@ from sense_emu.imu import (
 
 class TestImuFilenameExtended:
     def test_no_shm_uses_tmp(self):
-        import sys
-        with patch('os.path.exists', return_value=False), \
-             patch('sys.platform', 'linux' if not sys.platform.startswith('win') else 'win32'):
+        with patch('sys.platform', 'linux'), \
+             patch('os.path.exists', return_value=False):
             result = imu_filename()
-            if sys.platform.startswith('win'):
-                assert 'rpi-sense-emu-imu' in result
-            else:
-                assert result == '/tmp/rpi-sense-emu-imu'
+        import os
+        assert result == os.path.join('/tmp', 'rpi-sense-emu-imu')
 
     def test_windows_path(self):
         with patch('sys.platform', 'win32'), \
@@ -178,6 +175,24 @@ class TestInitImu:
             fd = init_imu()
         assert os.path.exists(path)
         fd.close()
+
+    def test_truncates_oversized_file(self, tmp_path):
+        path = str(tmp_path / 'oversized_imu')
+        with open(path, 'wb') as f:
+            f.write(b'\x00' * (IMU_DATA.size + 50))
+        with patch('sense_emu.imu.imu_filename', return_value=path):
+            fd = init_imu()
+        fd.close()
+        assert os.path.getsize(path) == IMU_DATA.size
+
+    def test_skips_truncate_when_correct_size(self, tmp_path):
+        path = str(tmp_path / 'correct_imu')
+        with open(path, 'wb') as f:
+            f.write(b'\xAB' * IMU_DATA.size)
+        with patch('sense_emu.imu.imu_filename', return_value=path):
+            fd = init_imu()
+        fd.close()
+        assert os.path.getsize(path) == IMU_DATA.size
 
 
 class TestIMUServerExtended:

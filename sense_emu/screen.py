@@ -59,8 +59,11 @@ def init_screen():
         # Attempt to open the screen's device file and ensure it's 160 bytes
         # long
         fd = io.open(screen_filename(), 'r+b', buffering=0)
-        fd.seek(160)
-        fd.truncate()
+        # Only truncate if size is wrong: avoids Windows PermissionError when
+        # another handle has an active mmap on the same file.
+        if os.fstat(fd.fileno()).st_size != 160:
+            fd.seek(160)
+            fd.truncate()
     except IOError as e:
         # If the screen's device file doesn't exist, create it with reasonable
         # initial values

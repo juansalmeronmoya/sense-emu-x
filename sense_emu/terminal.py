@@ -56,11 +56,12 @@ logging.getLogger().addHandler(_CONSOLE)
 class FileType:
     # Variant of argparse.FileType that handles binary stdin/stdout streams
     # correctly under Python 3
-    def __init__(self, mode='r', bufsize=-1, encoding=None, errors=None):
+    def __init__(self, mode='r', bufsize=-1, encoding=None, errors=None, newline=None):
         self._mode = mode
         self._bufsize = bufsize
         self._encoding = encoding
         self._errors = errors
+        self._newline = newline
 
     def __call__(self, string):
         if string == '-':
@@ -81,7 +82,7 @@ class FileType:
             else:
                 raise ValueError(_('argument "-" with mode %r') % self._mode)
         try:
-            return io.open(string, self._mode, self._bufsize, self._encoding, self._errors)
+            return io.open(string, self._mode, self._bufsize, self._encoding, self._errors, self._newline)
         except IOError as e:
             raise argparse.ArgumentTypeError(
                     _("can't open '%(name)s': %(error)s") % {'name': string, 'error': e})

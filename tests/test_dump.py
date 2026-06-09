@@ -1,4 +1,5 @@
 import io
+import sys
 import csv
 import time
 import pytest
@@ -51,35 +52,34 @@ class TestDumpMain:
     def test_generates_csv_rows(self, app, sample_recording, tmp_path):
         out_file = str(tmp_path / 'out.csv')
         app([sample_recording, out_file])
-        with open(out_file, 'r', newline='') as f:
-            rows = [r for r in csv.reader(f) if r]  # Filter empty rows
-        assert len(rows) >= 4  # At least 4 data rows
+        with open(out_file, 'r') as f:
+            rows = list(csv.reader(f))
+        assert len(rows) == 5
 
     def test_header_flag_adds_header_row(self, app, sample_recording, tmp_path):
         out_file = str(tmp_path / 'out.csv')
         app(['--header', sample_recording, out_file])
-        with open(out_file, 'r', newline='') as f:
-            rows = [r for r in csv.reader(f) if r]  # Filter empty rows
+        with open(out_file, 'r') as f:
+            rows = list(csv.reader(f))
         assert rows[0][0] == 'timestamp'
-        assert len(rows) >= 5  # At least 1 header + 4 data
+        assert len(rows) == 6  # 1 header + 5 data
 
     def test_csv_has_correct_column_count(self, app, sample_recording, tmp_path):
         out_file = str(tmp_path / 'out.csv')
         app(['--header', sample_recording, out_file])
-        with open(out_file, 'r', newline='') as f:
-            rows = [r for r in csv.reader(f) if r]  # Filter empty rows
+        with open(out_file, 'r') as f:
+            rows = list(csv.reader(f))
         assert all(len(row) == 17 for row in rows)
 
+    @pytest.mark.skipif(sys.platform == 'win32', reason='%s strftime format not supported on Windows')
     def test_custom_timestamp_format(self, app, sample_recording, tmp_path):
-        import sys
         out_file = str(tmp_path / 'out.csv')
-        # Use %Y-%m-%d format instead of %s which is not supported on Windows
-        timestamp_format = '%Y-%m-%d' if sys.platform.startswith('win') else '%s'
-        app(['--timestamp-format', timestamp_format, sample_recording, out_file])
-        with open(out_file, 'r', newline='') as f:
-            rows = [r for r in csv.reader(f) if r]  # Filter empty rows
-        # Verify we have at least one row with data
-        assert len(rows) >= 1
+        app(['--timestamp-format', '%s', sample_recording, out_file])
+        with open(out_file, 'r') as f:
+            rows = list(csv.reader(f))
+        # All timestamps should be numeric strings
+        for row in rows:
+            int(row[0])  # should not raise
 
     def test_pressure_values_match_input(self, app, sample_recording, tmp_path):
         out_file = str(tmp_path / 'out.csv')

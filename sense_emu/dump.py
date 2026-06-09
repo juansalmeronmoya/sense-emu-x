@@ -44,7 +44,7 @@ class DumpApplication(TerminalApplication):
             '--header', action='store_true', default=False,
             help=_('if specified, output column headers'))
         self.parser.add_argument('input', type=FileType('rb'))
-        self.parser.add_argument('output', type=FileType('w', encoding='utf-8'))
+        self.parser.add_argument('output', type=FileType('w', encoding='utf-8', newline=''))
 
     def source(self, f):
         logging.info(_('Reading header'))

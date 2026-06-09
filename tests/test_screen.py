@@ -99,14 +99,11 @@ from sense_emu.screen import screen_filename, init_screen, ScreenClient
 
 class TestScreenFilenameExtended:
     def test_no_shm_uses_tmp(self):
-        import sys
-        with patch('os.path.exists', return_value=False), \
-             patch('sys.platform', 'linux' if not sys.platform.startswith('win') else 'win32'):
+        with patch('sys.platform', 'linux'), \
+             patch('os.path.exists', return_value=False):
             result = screen_filename()
-            if sys.platform.startswith('win'):
-                assert 'rpi-sense-emu-screen' in result
-            else:
-                assert result == '/tmp/rpi-sense-emu-screen'
+        import os
+        assert result == os.path.join('/tmp', 'rpi-sense-emu-screen')
 
     def test_windows_path(self):
         with patch('sys.platform', 'win32'), \
@@ -123,6 +120,24 @@ class TestInitScreen:
         assert os.path.exists(path)
         assert fd.seek(0, 2) >= 160  # at least 160 bytes
         fd.close()
+
+    def test_truncates_oversized_file(self, tmp_path):
+        path = str(tmp_path / 'oversized_screen')
+        with open(path, 'wb') as f:
+            f.write(b'\x00' * 220)
+        with patch('sense_emu.screen.screen_filename', return_value=path):
+            fd = init_screen()
+        fd.close()
+        assert os.path.getsize(path) == 160
+
+    def test_skips_truncate_when_correct_size(self, tmp_path):
+        path = str(tmp_path / 'correct_screen')
+        with open(path, 'wb') as f:
+            f.write(b'\xAB' * 160)
+        with patch('sense_emu.screen.screen_filename', return_value=path):
+            fd = init_screen()
+        fd.close()
+        assert os.path.getsize(path) == 160
 
 
 class TestTouchRunFallback:
