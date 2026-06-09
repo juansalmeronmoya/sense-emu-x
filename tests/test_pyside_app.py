@@ -1025,6 +1025,146 @@ class TestPysideMain:
         assert hasattr(pm, 'main')
 
 
+class TestScreenWriter:
+    def test_set_pixel_writes_rgb565(self, tmp_screen_file):
+        from sense_emu.screen import ScreenWriter, ScreenClient
+        writer = ScreenWriter()
+        try:
+            writer.set_pixel(3, 2, 255, 0, 0)
+        finally:
+            writer.close()
+        client = ScreenClient()
+        try:
+            val = int(client.array[2, 3])
+        finally:
+            client.close()
+        assert (val & 0xF800) >> 11 == 31  # max red in 5-bit
+
+    def test_clear_resets_all_pixels(self, tmp_screen_file):
+        from sense_emu.screen import ScreenWriter, ScreenClient
+        writer = ScreenWriter()
+        try:
+            writer.set_pixel(0, 0, 255, 255, 255)
+            writer.clear()
+        finally:
+            writer.close()
+        client = ScreenClient()
+        try:
+            val = int(client.array[0, 0])
+        finally:
+            client.close()
+        assert val == 0
+
+    def test_clear_with_color(self, tmp_screen_file):
+        from sense_emu.screen import ScreenWriter, ScreenClient
+        writer = ScreenWriter()
+        try:
+            writer.clear(r=0, g=0, b=248)
+        finally:
+            writer.close()
+        client = ScreenClient()
+        try:
+            val = int(client.array[0, 0])
+        finally:
+            client.close()
+        assert (val & 0x001F) == 31  # max blue in 5-bit
+
+    def test_close_is_idempotent(self, tmp_screen_file):
+        from sense_emu.screen import ScreenWriter
+        writer = ScreenWriter()
+        writer.close()
+        writer.close()  # second close must not raise
+
+
+class TestPaintMode:
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def test_has_paint_toggle(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert window._paint_toggle is not None
+
+    def test_paint_mode_off_by_default(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert not window.matrix._paint_mode
+
+    def test_toggle_enables_paint_mode(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._paint_toggle.setChecked(True)
+        assert window.matrix._paint_mode
+
+    def test_toggle_disables_paint_mode(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._paint_toggle.setChecked(True)
+        window._paint_toggle.setChecked(False)
+        assert not window.matrix._paint_mode
+
+    def test_cell_painted_writes_pixel(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.screen import ScreenClient
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        from PySide6.QtGui import QColor
+        window._paint_color = QColor(255, 0, 0)
+        window.matrix.set_paint_color(QColor(255, 0, 0))
+        window._on_cell_painted(0, 0)
+        client = ScreenClient()
+        try:
+            val = int(client.array[0, 0])
+        finally:
+            client.close()
+        assert (val & 0xF800) >> 11 == 31
+        if window._screen_writer:
+            window._screen_writer.close()
+            window._screen_writer = None
+
+    def test_screen_writer_lazy_init(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert window._screen_writer is None
+        window._on_cell_painted(1, 1)
+        assert window._screen_writer is not None
+        window._screen_writer.close()
+        window._screen_writer = None
+
+    def test_clear_matrix_creates_writer(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert window._screen_writer is None
+        window._clear_matrix()
+        assert window._screen_writer is not None
+        window._screen_writer.close()
+        window._screen_writer = None
+
+    def test_close_event_closes_screen_writer(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtGui import QCloseEvent
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._on_cell_painted(0, 0)
+        assert window._screen_writer is not None
+        event = QCloseEvent()
+        window.closeEvent(event)
+        assert window._screen_writer is None
+
+    def test_cell_at_returns_correct_coords(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtCore import QPoint
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window.matrix.resize(320, 320)
+        # pixel at (20, 20) → cell (0, 0)  (each cell is 40px)
+        cx, cy = window.matrix._cell_at(QPoint(20, 20))
+        assert cx == 0 and cy == 0
+        # pixel at (200, 160) → cell (5, 4)
+        cx, cy = window.matrix._cell_at(QPoint(200, 160))
+        assert cx == 5 and cy == 4
+
+    def test_cell_at_out_of_bounds(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtCore import QPoint
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window.matrix.resize(320, 320)
+        cx, cy = window.matrix._cell_at(QPoint(-1, -1))
+        assert cx is None and cy is None
+
+
 class TestPysideMainFunction:
     def test_main_calls_sys_exit(self, tmp_screen_file, emulator):
         from sense_emu.pyside_app import main

@@ -8,13 +8,13 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QPushButton, QScrollArea, QGroupBox, QSplitter,
                                QFileDialog, QMessageBox, QDialog, QFormLayout,
                                QSpinBox, QDialogButtonBox, QSizePolicy,
-                               QDoubleSpinBox, QProgressBar)
-from PySide6.QtCore import Qt, QTimer, QMargins, QSize, QSettings
+                               QDoubleSpinBox, QProgressBar, QColorDialog)
+from PySide6.QtCore import Qt, QTimer, QMargins, QSize, QSettings, Signal
 from PySide6.QtGui import QPainter, QColor, QAction, QKeySequence
 from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 
 from .core import EmulatorController
-from .screen import screen_filename
+from .screen import screen_filename, ScreenWriter
 from .stick import SenseStick, STICK_KEYS, make_stick_event
 from .recfile import parse_recording
 from .playback import Player
@@ -46,12 +46,16 @@ _CHART_GROUPS = [
 # ── LED Matrix ────────────────────────────────────────────────────────────────
 
 class LEDMatrixWidget(QWidget):
+    cellPainted = Signal(int, int)
+
     def __init__(self, screen_client=None, cell_size=40):
         super().__init__()
         self._cell_size = cell_size
         self._update_size()
         self.matrix_data = bytearray(192)
         self._screen_client = screen_client
+        self._paint_mode = False
+        self._paint_color = QColor(255, 255, 255)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_matrix)
@@ -90,6 +94,40 @@ class LEDMatrixWidget(QWidget):
             self.update()
         except Exception:
             pass
+
+    def set_paint_mode(self, enabled):
+        self._paint_mode = enabled
+        self.setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+
+    def set_paint_color(self, color):
+        self._paint_color = color
+
+    def _cell_at(self, pos):
+        w, h = self.width(), self.height()
+        x, y = pos.x(), pos.y()
+        if x < 0 or y < 0 or x >= w or y >= h:
+            return None, None
+        cx = int(x / (w / 8))
+        cy = int(y / (h / 8))
+        if 0 <= cx < 8 and 0 <= cy < 8:
+            return cx, cy
+        return None, None
+
+    def mousePressEvent(self, event):
+        if self._paint_mode and event.button() == Qt.LeftButton:
+            cx, cy = self._cell_at(event.position().toPoint())
+            if cx is not None:
+                self.cellPainted.emit(cx, cy)
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._paint_mode and (event.buttons() & Qt.LeftButton):
+            cx, cy = self._cell_at(event.position().toPoint())
+            if cx is not None:
+                self.cellPainted.emit(cx, cy)
+        else:
+            super().mouseMoveEvent(event)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -454,6 +492,30 @@ class SenseEmuDesktop(QMainWindow):
         size_row.addStretch()
         matrix_vbox.addLayout(size_row)
 
+        # Paint controls
+        paint_row = QHBoxLayout()
+        self._paint_toggle = QPushButton("Paint")
+        self._paint_toggle.setCheckable(True)
+        self._paint_toggle.setFixedWidth(52)
+        self._paint_toggle.toggled.connect(self._on_paint_toggled)
+        paint_row.addWidget(self._paint_toggle)
+        self._paint_color_btn = QPushButton()
+        self._paint_color_btn.setFixedSize(26, 26)
+        self._paint_color_btn.setStyleSheet(
+            "background-color: white; border: 1px solid #888;")
+        self._paint_color_btn.clicked.connect(self._pick_paint_color)
+        self._paint_color = QColor(255, 255, 255)
+        paint_row.addWidget(self._paint_color_btn)
+        clear_btn = QPushButton("Clear")
+        clear_btn.setFixedWidth(48)
+        clear_btn.clicked.connect(self._clear_matrix)
+        paint_row.addWidget(clear_btn)
+        paint_row.addStretch()
+        matrix_vbox.addLayout(paint_row)
+
+        self.matrix.cellPainted.connect(self._on_cell_painted)
+        self._screen_writer = None
+
         top_layout.addWidget(matrix_group, 0)
 
         # Right: scrollable controls
@@ -736,6 +798,31 @@ class SenseEmuDesktop(QMainWindow):
         self._qsettings.setValue('cell_size', value)
         self._qsettings.sync()
 
+    # ── Paint mode ────────────────────────────────────────────────────────────
+
+    def _on_paint_toggled(self, checked):
+        self.matrix.set_paint_mode(checked)
+
+    def _pick_paint_color(self):
+        color = QColorDialog.getColor(self._paint_color, self, "Pick paint color")
+        if color.isValid():
+            self._paint_color = color
+            self.matrix.set_paint_color(color)
+            self._paint_color_btn.setStyleSheet(
+                f"background-color: {color.name()}; border: 1px solid #888;")
+
+    def _on_cell_painted(self, cx, cy):
+        if self._screen_writer is None:
+            self._screen_writer = ScreenWriter()
+        r, g, b = (self._paint_color.red(), self._paint_color.green(),
+                   self._paint_color.blue())
+        self._screen_writer.set_pixel(cx, cy, r, g, b)
+
+    def _clear_matrix(self):
+        if self._screen_writer is None:
+            self._screen_writer = ScreenWriter()
+        self._screen_writer.clear()
+
     # ── Source actions ────────────────────────────────────────────────────────
 
     def _use_emulator(self):
@@ -927,6 +1014,9 @@ class SenseEmuDesktop(QMainWindow):
             self._player.stop()
         if self._recorder and self._recorder.running:
             self._recorder.stop()
+        if self._screen_writer is not None:
+            self._screen_writer.close()
+            self._screen_writer = None
         self.telemetry._timer.stop()
         self.controller.close()
         super().closeEvent(event)
