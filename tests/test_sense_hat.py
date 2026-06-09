@@ -14,6 +14,7 @@ import socket as _socket
 import pytest
 import numpy as np
 from unittest.mock import patch, MagicMock
+from sense_emu.lock import _LOCK_MAGIC
 
 # Platform-appropriate socket family for stick tests
 if sys.platform.startswith('win'):
@@ -69,7 +70,7 @@ def hat(tmp_screen_file, tmp_lock_file, tmp_stick_addr):
 
     # Write a held lock (our PID) so EmulatorLock.wait returns True
     with open(tmp_lock_file, 'w') as f:
-        f.write('%d\n' % os.getpid())
+        f.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))
 
     with patch.dict('sys.modules', {'RTIMU': rtimu_mock}), \
          patch('sense_emu.sense_hat.RTIMU', rtimu_mock), \

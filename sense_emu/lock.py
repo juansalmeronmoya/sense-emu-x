@@ -22,6 +22,8 @@ import io
 import errno
 from time import time, sleep
 
+_LOCK_MAGIC = 'sense-emu-lock'
+
 
 if sys.platform.startswith('win'):
     import ctypes
@@ -148,12 +150,15 @@ class EmulatorLock:
         return os.path.exists(self._filename)
 
     def _is_stale(self):
-        # True if the lock file exists, but the PID it references doesn't
-        pid = self._read_pid()
-        if pid is not None:
-            return not pid_exists(pid)
-        else:
+        # True if the lock file exists but is invalid or the PID it references doesn't
+        if not self._is_held():
             return False
+        pid = self._read_pid()
+        if pid is None:
+            # File exists but has no valid sense_emu magic — treat as stale
+            # (handles recycled PIDs from other processes on Windows)
+            return True
+        return not pid_exists(pid)
 
     def _break_lock(self):
         # Unconditionally delete the file
@@ -165,17 +170,15 @@ class EmulatorLock:
 
     def _read_pid(self):
         try:
-            lockfile = io.open(self._filename, 'rb')
-        except IOError:
+            with io.open(self._filename, 'rb') as lockfile:
+                pid_line = lockfile.readline().decode('ascii').strip()
+                magic_line = lockfile.readline().decode('ascii').strip()
+                if magic_line != _LOCK_MAGIC:
+                    return None
+                return int(pid_line)
+        except (IOError, ValueError):
             return None
-        else:
-            try:
-                return int(lockfile.readline().decode('ascii').strip())
-            except ValueError:
-                return None
-            finally:
-                lockfile.close()
 
     def _write_pid(self):
         with io.open(self._filename, 'x', encoding='ascii') as lockfile:
-            lockfile.write('%d\n' % os.getpid())
+            lockfile.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))

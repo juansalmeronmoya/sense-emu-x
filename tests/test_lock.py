@@ -3,7 +3,7 @@ import sys
 import time
 import pytest
 from unittest.mock import patch
-from sense_emu.lock import EmulatorLock, pid_exists, lock_filename
+from sense_emu.lock import EmulatorLock, pid_exists, lock_filename, _LOCK_MAGIC
 
 
 class TestPidExists:
@@ -31,7 +31,7 @@ class TestEmulatorLock:
         lock.acquire()
         assert os.path.exists(tmp_lock_file)
         with open(tmp_lock_file, 'r') as f:
-            pid = int(f.read().strip())
+            pid = int(f.readline().strip())
         assert pid == os.getpid()
         lock.release()
 
@@ -59,9 +59,9 @@ class TestEmulatorLock:
         assert not os.path.exists(tmp_lock_file)
 
     def test_stale_lock_broken_on_acquire(self, tmp_lock_file):
-        # Write a stale PID that doesn't exist
+        # Write a stale lock with a dead PID
         with open(tmp_lock_file, 'w') as f:
-            f.write('999999999\n')
+            f.write('999999999\n%s\n' % _LOCK_MAGIC)
         lock = EmulatorLock('test')
         lock.acquire()  # should break stale lock and acquire
         assert lock.mine is True
@@ -75,7 +75,7 @@ class TestEmulatorLock:
     def test_wait_returns_true_when_held(self, tmp_lock_file):
         # Write our own PID as if we hold the lock
         with open(tmp_lock_file, 'w') as f:
-            f.write('%d\n' % os.getpid())
+            f.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))
         lock = EmulatorLock('test')
         result = lock.wait(timeout=0.2)
         assert result is True
@@ -101,7 +101,7 @@ class TestEmulatorLock:
 
     def test_is_held_true_when_file_exists(self, tmp_lock_file):
         with open(tmp_lock_file, 'w') as f:
-            f.write('%d\n' % os.getpid())
+            f.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))
         lock = EmulatorLock('test')
         assert lock._is_held() is True
         lock.release()
@@ -112,14 +112,14 @@ class TestEmulatorLock:
 
     def test_is_stale_false_for_live_pid(self, tmp_lock_file):
         with open(tmp_lock_file, 'w') as f:
-            f.write('%d\n' % os.getpid())
+            f.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))
         lock = EmulatorLock('test')
         assert lock._is_stale() is False
         lock.release()
 
     def test_is_stale_true_for_dead_pid(self, tmp_lock_file):
         with open(tmp_lock_file, 'w') as f:
-            f.write('999999999\n')
+            f.write('999999999\n%s\n' % _LOCK_MAGIC)
         lock = EmulatorLock('test')
         assert lock._is_stale() is True
 
@@ -135,7 +135,8 @@ class TestEmulatorLock:
         lock._write_pid()
         assert os.path.exists(tmp_lock_file)
         with open(tmp_lock_file) as f:
-            assert int(f.read().strip()) == os.getpid()
+            assert int(f.readline().strip()) == os.getpid()
+            assert f.readline().strip() == _LOCK_MAGIC
         os.unlink(tmp_lock_file)
 
 
@@ -157,7 +158,7 @@ class TestPidExistsEPERM:
 
 
 import errno
-from sense_emu.lock import pid_exists, lock_filename, EmulatorLock
+from sense_emu.lock import pid_exists, lock_filename, EmulatorLock, _LOCK_MAGIC
 
 
 class TestPidExistsRaise:
@@ -180,7 +181,7 @@ class TestLockWaitNoneTimeout:
     def test_wait_none_timeout_returns_true_if_held(self, tmp_lock_file):
         import os
         with open(tmp_lock_file, 'w') as f:
-            f.write('%d\n' % os.getpid())
+            f.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))
         lock = EmulatorLock('test')
         result = lock.wait(timeout=None)
         assert result is True
@@ -193,3 +194,27 @@ class TestBreakLockRaises:
         with patch('os.unlink', side_effect=OSError(errno.EACCES, 'denied')):
             with pytest.raises(OSError):
                 lock._break_lock()
+
+
+class TestRecycledPid:
+    """Regression test: lock file with a live PID but no magic must be treated as stale.
+
+    This covers the Windows PID-recycling bug where a previous sense_emu crash
+    leaves a lock file whose PID is later reused by an unrelated process.
+    """
+
+    def test_is_stale_true_for_no_magic(self, tmp_lock_file):
+        # File exists, PID is live (current process), but no magic line
+        with open(tmp_lock_file, 'w') as f:
+            f.write('%d\n' % os.getpid())
+        lock = EmulatorLock('test')
+        assert lock._is_stale() is True
+
+    def test_acquire_breaks_no_magic_lock(self, tmp_lock_file):
+        # Should be able to acquire even when PID-only file exists
+        with open(tmp_lock_file, 'w') as f:
+            f.write('%d\n' % os.getpid())
+        lock = EmulatorLock('test')
+        lock.acquire()
+        assert lock.mine is True
+        lock.release()

@@ -61,3 +61,25 @@ class TestEmulatorController:
         # emulator holds the lock; a second EmulatorController must fail
         with pytest.raises((RuntimeError, FileExistsError)):
             EmulatorController(simulate_imu=False, simulate_env=False)
+
+
+class TestEmulatorControllerBindFailure:
+    """A server failing to bind (e.g. another instance holds the joystick port)
+    must surface as a clean RuntimeError and must release the lock."""
+
+    def test_bind_failure_raises_runtimeerror(self, emulator_patches):
+        import errno
+        with patch('sense_emu.core.StickServer',
+                   side_effect=OSError(errno.EADDRINUSE, 'address in use')):
+            with pytest.raises(RuntimeError):
+                EmulatorController(simulate_imu=False, simulate_env=False)
+
+    def test_bind_failure_releases_lock(self, emulator_patches):
+        import errno
+        from sense_emu.lock import EmulatorLock
+        with patch('sense_emu.core.StickServer',
+                   side_effect=OSError(errno.EADDRINUSE, 'address in use')):
+            with pytest.raises(RuntimeError):
+                EmulatorController(simulate_imu=False, simulate_env=False)
+        # Lock must be free afterwards so the next launch can acquire it
+        assert EmulatorLock('check')._is_held() is False
