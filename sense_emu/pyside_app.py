@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QFileDialog, QMessageBox, QDialog, QFormLayout,
                                QSpinBox, QDialogButtonBox, QSizePolicy,
                                QDoubleSpinBox)
-from PySide6.QtCore import Qt, QTimer, QMargins, QSize
+from PySide6.QtCore import Qt, QTimer, QMargins, QSize, QSettings
 from PySide6.QtGui import QPainter, QColor, QAction, QKeySequence
 from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 
@@ -432,12 +432,14 @@ class SenseEmuDesktop(QMainWindow):
         self.setGeometry(100, 100, 1200, 800)
         self.controller = EmulatorController()
 
+        self._qsettings = QSettings(QSettings.IniFormat, QSettings.UserScope,
+                                    'sense-emu', 'sense-emu-gui')
         self._settings = {
-            'poll_interval_ms': 200,
-            'max_samples': 300,
-            'time_window_s': 60,
-            'cell_size': 40,
-            'led_refresh_ms': 100,
+            'poll_interval_ms': self._qsettings.value('poll_interval_ms', 200, type=int),
+            'max_samples':      self._qsettings.value('max_samples', 300, type=int),
+            'time_window_s':    self._qsettings.value('time_window_s', 60, type=int),
+            'cell_size':        self._qsettings.value('cell_size', 40, type=int),
+            'led_refresh_ms':   self._qsettings.value('led_refresh_ms', 100, type=int),
         }
 
         # ── Top section ───────────────────────────────────────────────────────
@@ -573,18 +575,25 @@ class SenseEmuDesktop(QMainWindow):
         self.telemetry = TelemetryPanel()
 
         # ── Splitter ──────────────────────────────────────────────────────────
-        splitter = QSplitter(Qt.Vertical)
-        splitter.addWidget(top_widget)
-        splitter.addWidget(self.telemetry)
-        splitter.setCollapsible(0, False)
-        splitter.setCollapsible(1, False)
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([420, 330])
+        self._splitter = QSplitter(Qt.Vertical)
+        self._splitter.addWidget(top_widget)
+        self._splitter.addWidget(self.telemetry)
+        self._splitter.setCollapsible(0, False)
+        self._splitter.setCollapsible(1, False)
+        self._splitter.setStretchFactor(0, 1)
+        self._splitter.setStretchFactor(1, 1)
+        self._splitter.setSizes([420, 330])
 
         main_widget = QWidget()
-        QVBoxLayout(main_widget).addWidget(splitter)
+        QVBoxLayout(main_widget).addWidget(self._splitter)
         self.setCentralWidget(main_widget)
+
+        geom = self._qsettings.value('geometry')
+        if geom is not None:
+            self.restoreGeometry(geom)
+        splitter_state = self._qsettings.value('splitter_state')
+        if splitter_state is not None:
+            self._splitter.restoreState(splitter_state)
 
         self._build_menu()
 
@@ -652,12 +661,20 @@ class SenseEmuDesktop(QMainWindow):
             f'Python {sys.version.split()[0]}</small>',
         )
 
+    def _save_settings(self):
+        for key, val in self._settings.items():
+            self._qsettings.setValue(key, val)
+        self._qsettings.setValue('geometry', self.saveGeometry())
+        self._qsettings.setValue('splitter_state', self._splitter.saveState())
+        self._qsettings.sync()
+
     def _open_preferences(self):
         dlg = PreferencesDialog(self, settings=self._settings)
         if dlg.exec() == QDialog.Accepted:
             new_settings = dlg.get_settings()
             self._settings.update(new_settings)
             self._apply_settings()
+            self._save_settings()
 
     def _apply_settings(self):
         self.telemetry.apply_settings(self._settings)
@@ -672,6 +689,8 @@ class SenseEmuDesktop(QMainWindow):
     def _on_matrix_size_changed(self, value):
         self._settings['cell_size'] = value
         self.matrix.set_cell_size(value)
+        self._qsettings.setValue('cell_size', value)
+        self._qsettings.sync()
 
     # ── Source actions ────────────────────────────────────────────────────────
 
@@ -736,6 +755,7 @@ class SenseEmuDesktop(QMainWindow):
             super().keyPressEvent(event)
 
     def closeEvent(self, event):
+        self._save_settings()
         self.telemetry._timer.stop()
         self.controller.close()
         super().closeEvent(event)

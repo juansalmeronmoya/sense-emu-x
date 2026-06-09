@@ -14,6 +14,14 @@ def patch_screen(tmp_screen_file):
     yield
 
 
+@pytest.fixture(autouse=True)
+def isolate_qsettings(tmp_path):
+    """Redirect QSettings writes to tmp_path so tests never touch real user config."""
+    from PySide6.QtCore import QSettings
+    QSettings.setPath(QSettings.IniFormat, QSettings.UserScope, str(tmp_path))
+    yield
+
+
 def _make_mock_hat():
     hat = MagicMock()
     hat.get_accelerometer_raw.return_value = {'x': 0.1, 'y': 0.2, 'z': 1.0}
@@ -398,6 +406,32 @@ class TestSenseEmuDesktop:
                 window._open_preferences()
             assert window._settings['cell_size'] == 35
             assert window._settings['max_samples'] == 200
+
+    def test_settings_roundtrip(self, qtbot, emulator, tmp_screen_file):
+        """Settings saved on close are restored when a new window opens."""
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            win1 = SenseEmuDesktop()
+            qtbot.addWidget(win1)
+            win1._matrix_size_spin.setValue(55)   # triggers _on_matrix_size_changed
+            win1._save_settings()                  # flush to disk
+
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            win2 = SenseEmuDesktop()
+            qtbot.addWidget(win2)
+            assert win2._settings['cell_size'] == 55
+            assert win2.matrix.cell_size() == 55
+
+    def test_has_qsettings(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        from PySide6.QtCore import QSettings
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            assert isinstance(window._qsettings, QSettings)
 
 
 class TestJoystickEvents:
