@@ -12,6 +12,7 @@ from .core import EmulatorController
 from .screen import screen_filename
 from .stick import SenseStick, make_stick_event
 from .recfile import parse_recording
+from .playback import Player
 
 _parse_recording = parse_recording
 
@@ -256,9 +257,10 @@ class SenseEmuTUI(App):
     """
 
     BINDINGS = [
-        Binding("ctrl+q", "quit",           "Quit",           show=True),
-        Binding("ctrl+o", "open_recording", "Open Recording", show=True),
-        Binding("ctrl+e", "use_emulator",   "Emulator",       show=True),
+        Binding("ctrl+q", "quit",            "Quit",           show=True),
+        Binding("ctrl+o", "open_recording",  "Open Recording", show=True),
+        Binding("ctrl+p", "replay_recording", "Replay",        show=True),
+        Binding("ctrl+e", "use_emulator",    "Emulator",       show=True),
         # priority=True so these fire even when an Input widget has focus
         Binding("up",    "joy_up",    "↑", show=True, priority=True),
         Binding("down",  "joy_down",  "↓", show=True, priority=True),
@@ -330,10 +332,14 @@ class SenseEmuTUI(App):
                 message='Another instance of the Sense HAT emulator is already running.\n'
                         'Please close it before starting a new one.')
             return
+        self._player = None
+        self._playback_timer = None
         self.query_one(LEDMatrix).set_screen_client(self.controller.screen)
         self._activate_emulator()
 
     def on_unmount(self):
+        if hasattr(self, '_player') and self._player and self._player.running:
+            self._player.stop()
         self.controller.close()
 
     def _activate_emulator(self):
@@ -413,6 +419,42 @@ class SenseEmuTUI(App):
 
     def action_open_recording(self):
         self.push_screen(RecordingPathScreen(), self._on_recording_path)
+
+    def action_replay_recording(self):
+        self.push_screen(RecordingPathScreen(), self._on_replay_path)
+
+    def _on_replay_path(self, path):
+        if not path:
+            return
+        if self._player and self._player.running:
+            self._player.stop()
+        self._player = Player(
+            self.controller.imu,
+            self.controller.pressure,
+            self.controller.humidity,
+        )
+        try:
+            self._player.play(path)
+        except (ValueError, OSError) as e:
+            self._set_status(f"[red]Replay error: {e}[/red]")
+            return
+        if self._player.total == 0:
+            self._set_status("[yellow]Recording has no data[/yellow]")
+            return
+        self._set_status("[cyan]Playing… 0%[/cyan]")
+        self._playback_timer = self.set_interval(0.2, self._poll_playback)
+
+    def _poll_playback(self):
+        if self._player is None:
+            return
+        pct = int(self._player.progress * 100)
+        if self._player.running:
+            self._set_status(f"[cyan]Playing… {pct}%[/cyan]")
+        else:
+            if self._playback_timer:
+                self._playback_timer.stop()
+                self._playback_timer = None
+            self._set_status("[green]Replay finished[/green]")
 
     def _on_recording_path(self, path):
         if not path:

@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QPushButton, QScrollArea, QGroupBox, QSplitter,
                                QFileDialog, QMessageBox, QDialog, QFormLayout,
                                QSpinBox, QDialogButtonBox, QSizePolicy,
-                               QDoubleSpinBox)
+                               QDoubleSpinBox, QProgressBar)
 from PySide6.QtCore import Qt, QTimer, QMargins, QSize, QSettings
 from PySide6.QtGui import QPainter, QColor, QAction, QKeySequence
 from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
@@ -17,6 +17,7 @@ from .core import EmulatorController
 from .screen import screen_filename
 from .stick import SenseStick, STICK_KEYS, make_stick_event
 from .recfile import parse_recording
+from .playback import Player
 
 _parse_recording = parse_recording
 
@@ -565,8 +566,30 @@ class SenseEmuDesktop(QMainWindow):
         self._splitter.setStretchFactor(1, 1)
         self._splitter.setSizes([420, 330])
 
+        # ── Playback status bar ───────────────────────────────────────────────
+        self._playback_bar = QWidget()
+        pb_layout = QHBoxLayout(self._playback_bar)
+        pb_layout.setContentsMargins(4, 2, 4, 2)
+        self._playback_progress = QProgressBar()
+        self._playback_progress.setRange(0, 100)
+        self._playback_progress.setValue(0)
+        self._playback_stop_btn = QPushButton("Stop")
+        self._playback_stop_btn.clicked.connect(self._stop_playback)
+        self._playback_label = QLabel("Playing recording…")
+        pb_layout.addWidget(self._playback_label)
+        pb_layout.addWidget(self._playback_progress, 1)
+        pb_layout.addWidget(self._playback_stop_btn)
+        self._playback_bar.setVisible(False)
+
+        self._player = None
+        self._playback_poll = QTimer(self)
+        self._playback_poll.setInterval(200)
+        self._playback_poll.timeout.connect(self._poll_playback)
+
         main_widget = QWidget()
-        QVBoxLayout(main_widget).addWidget(self._splitter)
+        main_layout = QVBoxLayout(main_widget)
+        main_layout.addWidget(self._splitter)
+        main_layout.addWidget(self._playback_bar)
         self.setCentralWidget(main_widget)
 
         geom = self._qsettings.value('geometry')
@@ -589,11 +612,17 @@ class SenseEmuDesktop(QMainWindow):
         # File
         file_menu = mb.addMenu("&File")
 
-        act_open = QAction("&Open trace…", self)
+        act_open = QAction("&View trace in charts…", self)
         act_open.setShortcut(QKeySequence("Ctrl+O"))
-        act_open.setStatusTip("Open a recorded trace file (.bin)")
+        act_open.setStatusTip("Load a recording into the telemetry charts")
         act_open.triggered.connect(self._open_recording)
         file_menu.addAction(act_open)
+
+        act_replay = QAction("&Replay recording…", self)
+        act_replay.setShortcut(QKeySequence("Ctrl+R"))
+        act_replay.setStatusTip("Replay a recording into the emulator")
+        act_replay.triggered.connect(self._start_playback)
+        file_menu.addAction(act_replay)
 
         file_menu.addSeparator()
 
@@ -697,6 +726,47 @@ class SenseEmuDesktop(QMainWindow):
             except ValueError as e:
                 QMessageBox.critical(self, 'Error opening recording', str(e))
 
+    # ── Playback ──────────────────────────────────────────────────────────────
+
+    def _start_playback(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, 'Replay recording', '',
+            'Recordings (*.bin);;All files (*)')
+        if not path:
+            return
+        if self._player and self._player.running:
+            self._player.stop()
+        self._player = Player(
+            self.controller.imu,
+            self.controller.pressure,
+            self.controller.humidity,
+        )
+        try:
+            self._player.play(path)
+        except (ValueError, OSError) as e:
+            QMessageBox.critical(self, 'Error replaying recording', str(e))
+            return
+        if self._player.total == 0:
+            QMessageBox.information(self, 'Replay', 'Recording contains no data.')
+            return
+        self._playback_bar.setVisible(True)
+        self._playback_poll.start()
+
+    def _stop_playback(self):
+        if self._player:
+            self._player.stop()
+        self._playback_poll.stop()
+        self._playback_bar.setVisible(False)
+
+    def _poll_playback(self):
+        if self._player is None:
+            return
+        pct = int(self._player.progress * 100)
+        self._playback_progress.setValue(pct)
+        if not self._player.running:
+            self._playback_poll.stop()
+            self._playback_bar.setVisible(False)
+
     # ── Sensor control ────────────────────────────────────────────────────────
 
     def _on_stick_press(self, direction):
@@ -737,6 +807,8 @@ class SenseEmuDesktop(QMainWindow):
 
     def closeEvent(self, event):
         self._save_settings()
+        if self._player and self._player.running:
+            self._player.stop()
         self.telemetry._timer.stop()
         self.controller.close()
         super().closeEvent(event)

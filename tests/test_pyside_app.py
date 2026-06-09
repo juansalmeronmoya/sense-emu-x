@@ -434,6 +434,56 @@ class TestSenseEmuDesktop:
             assert isinstance(window._qsettings, QSettings)
 
 
+class TestPlaybackGUI:
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def test_has_playback_bar_hidden(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert not window._playback_bar.isVisible()
+
+    def test_has_player_none_initially(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert window._player is None
+
+    def test_start_playback_cancelled_dialog(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch('sense_emu.pyside_app.QFileDialog.getOpenFileName',
+                   return_value=('', '')):
+            window._start_playback()
+        assert window._player is None
+
+    def test_stop_playback_hides_bar(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._playback_bar.setVisible(True)
+        window._stop_playback()
+        assert not window._playback_bar.isVisible()
+
+    def test_poll_playback_updates_progress(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        mock_player = MagicMock()
+        mock_player.running = True
+        mock_player.progress = 0.5
+        window._player = mock_player
+        window._poll_playback()
+        assert window._playback_progress.value() == 50
+
+    def test_poll_playback_hides_bar_when_done(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        mock_player = MagicMock()
+        mock_player.running = False
+        mock_player.progress = 1.0
+        window._player = mock_player
+        window._playback_bar.setVisible(True)
+        window._poll_playback()
+        assert not window._playback_bar.isVisible()
+
+
 class TestSingleInstanceError:
     """GUI main() must show a friendly warning when emulator is already running."""
 

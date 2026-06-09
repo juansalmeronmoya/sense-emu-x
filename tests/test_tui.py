@@ -599,6 +599,114 @@ class TestSenseEmuTUI:
         assert 'running' in msg.lower() or 'instance' in msg.lower() or 'emulator' in msg.lower()
         assert not hasattr(app, 'controller')
 
+    def test_action_replay_recording_pushes_screen(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        app._player = None
+        with patch.object(app, 'push_screen') as mock_push:
+            app.action_replay_recording()
+        mock_push.assert_called_once()
+
+    def test_on_replay_path_none_is_noop(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        app._player = None
+        app._playback_timer = None
+        app._on_replay_path(None)  # must not raise
+        assert app._player is None
+
+    def test_on_replay_path_empty_is_noop(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        app._player = None
+        app._playback_timer = None
+        app._on_replay_path('')  # must not raise
+
+    def test_on_replay_path_bad_file(self, mock_controller, tmp_path):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        app._player = None
+        app._playback_timer = None
+        mock_label = MagicMock()
+        app.query_one = MagicMock(return_value=mock_label)
+        bad = str(tmp_path / 'bad.bin')
+        with open(bad, 'wb') as f:
+            f.write(b'\x00' * 8)
+        app._on_replay_path(bad)  # must not raise; sets error status
+        mock_label.update.assert_called()
+        status = mock_label.update.call_args[0][0]
+        assert 'red' in status or 'error' in status.lower()
+
+    def test_on_replay_path_valid(self, mock_controller, tmp_path):
+        from sense_emu.tui import SenseEmuTUI
+        from sense_emu.common import HEADER_REC, DATA_REC
+        import time as _time
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        app._player = None
+        app._playback_timer = None
+
+        path = str(tmp_path / 'rec.bin')
+        t0 = _time.time()
+        with open(path, 'wb') as f:
+            f.write(HEADER_REC.pack(b'SENSEHAT', 1, t0))
+            f.write(DATA_REC.pack(t0, 1013.0, 20.0, 45.0, 21.0,
+                                   0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+                                   0.0, 0.0, 0.0, 0.0, 0.0, 0.0))
+
+        mock_label = MagicMock()
+        app.query_one = MagicMock(return_value=mock_label)
+        with patch.object(app, 'set_interval', return_value=MagicMock()):
+            app._on_replay_path(path)
+        assert app._player is not None
+        app._player.stop()
+
+    def test_poll_playback_running(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        mock_player = MagicMock()
+        mock_player.running = True
+        mock_player.progress = 0.5
+        app._player = mock_player
+        app._playback_timer = MagicMock()
+        mock_label = MagicMock()
+        app.query_one = MagicMock(return_value=mock_label)
+        app._poll_playback()
+        mock_label.update.assert_called()
+        status = mock_label.update.call_args[0][0]
+        assert '50%' in status
+
+    def test_poll_playback_finished(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        mock_player = MagicMock()
+        mock_player.running = False
+        mock_player.progress = 1.0
+        app._player = mock_player
+        mock_timer = MagicMock()
+        app._playback_timer = mock_timer
+        mock_label = MagicMock()
+        app.query_one = MagicMock(return_value=mock_label)
+        app._poll_playback()
+        mock_timer.stop.assert_called_once()
+        assert app._playback_timer is None
+
+    def test_on_unmount_stops_player(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        mock_player = MagicMock()
+        mock_player.running = True
+        app._player = mock_player
+        app.on_unmount()
+        mock_player.stop.assert_called_once()
+
 
 # ── RecordingPathScreen ───────────────────────────────────────────────────────
 
