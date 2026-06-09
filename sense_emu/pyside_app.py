@@ -7,8 +7,8 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QSlider, QLabel, QGridLayout,
                                QPushButton, QScrollArea, QGroupBox, QSplitter,
                                QFileDialog, QMessageBox)
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QPainter, QColor
+from PySide6.QtCore import Qt, QTimer, QMargins
+from PySide6.QtGui import QPainter, QColor, QAction, QKeySequence
 from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 
 from .core import EmulatorController
@@ -40,19 +40,19 @@ def _parse_recording(path):
 # ── Chart group definitions ───────────────────────────────────────────────────
 
 _CHART_GROUPS = [
-    ('Acelerómetro', 'G',
+    ('Accelerometer', 'G',
      [('ax', '#e74c3c', 'X'), ('ay', '#2ecc71', 'Y'), ('az', '#3498db', 'Z')]),
-    ('Giroscopio',   'rad/s',
+    ('Gyroscope',     'rad/s',
      [('gx', '#e74c3c', 'X'), ('gy', '#2ecc71', 'Y'), ('gz', '#3498db', 'Z')]),
-    ('Brújula',      'µT',
+    ('Compass',       'µT',
      [('cx', '#e74c3c', 'X'), ('cy', '#2ecc71', 'Y'), ('cz', '#3498db', 'Z')]),
-    ('Orientación',  '°',
+    ('Orientation',   '°',
      [('ox', '#e74c3c', 'Roll'), ('oy', '#2ecc71', 'Pitch'), ('oz', '#3498db', 'Yaw')]),
-    ('Presión',      'mbar',
+    ('Pressure',      'mbar',
      [('pressure', '#9b59b6', 'P')]),
-    ('Temperatura',  '°C',
+    ('Temperature',   '°C',
      [('ptemp', '#e74c3c', 'Pres'), ('htemp', '#2ecc71', 'Hum')]),
-    ('Humedad',      '%RH',
+    ('Humidity',      '%RH',
      [('humidity', '#3498db', 'H')]),
 ]
 
@@ -60,32 +60,26 @@ _CHART_GROUPS = [
 # ── LED Matrix ────────────────────────────────────────────────────────────────
 
 class LEDMatrixWidget(QWidget):
-    def __init__(self):
+    def __init__(self, screen_client=None):
         super().__init__()
         self.setMinimumSize(320, 320)
         self.matrix_data = bytearray(192)
+        self._screen_client = screen_client
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_matrix)
         self.timer.start(100)
 
-        try:
-            self.screen_file = io.open(screen_filename(), 'rb')
-        except Exception:
-            self.screen_file = None
-
     def update_matrix(self):
-        if not self.screen_file:
-            try:
-                self.screen_file = io.open(screen_filename(), 'rb')
-            except Exception:
-                return
-
-        self.screen_file.seek(0)
-        data = self.screen_file.read(192)
-        if len(data) == 192:
-            self.matrix_data = data
+        if self._screen_client is None:
+            return
+        try:
+            # rgb_array returns (8, 8, 3) uint8 with gamma correction applied
+            rgb = self._screen_client.rgb_array
+            self.matrix_data = rgb.flatten().tobytes()
             self.update()
+        except Exception:
+            pass
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -123,32 +117,39 @@ class TelemetryPanel(QWidget):
         root.setContentsMargins(2, 2, 2, 2)
         root.setSpacing(2)
 
-        self._status_label = QLabel('Fuente: -')
+        self._status_label = QLabel('Source: -')
         root.addWidget(self._status_label)
+
+        _COLS = 3
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         charts_widget = QWidget()
-        charts_layout = QHBoxLayout(charts_widget)
+        charts_layout = QGridLayout(charts_widget)
         charts_layout.setSpacing(4)
         charts_layout.setContentsMargins(2, 2, 2, 2)
 
         for i, (title, y_label, series_defs) in enumerate(_CHART_GROUPS):
             chart = QChart()
-            chart.setTitle(title)
-            chart.legend().setVisible(len(series_defs) > 1)
+            chart.legend().hide()
+            chart.setMargins(QMargins(0, 0, 0, 0))
+            chart.layout().setContentsMargins(0, 0, 0, 0)
+            chart.setBackgroundRoundness(0)
 
             x_axis = QValueAxis()
-            x_axis.setTitleText('t (s)')
+            x_axis.setLabelsVisible(True)
+            x_axis.setTitleVisible(False)
             x_axis.setRange(0, 60)
+            x_axis.setTickCount(4)
             chart.addAxis(x_axis, Qt.AlignBottom)
 
             y_axis = QValueAxis()
             y_axis.setTitleText(y_label)
             y_axis.setRange(-1, 1)
+            y_axis.setTickCount(3)
             chart.addAxis(y_axis, Qt.AlignLeft)
 
             self._x_axes.append(x_axis)
@@ -171,10 +172,32 @@ class TelemetryPanel(QWidget):
 
             self._chart_keys.append(keys)
 
+            # Compact header: "Title (unit)  ■ X  ■ Y  ■ Z"
+            legend_parts = '&nbsp;&nbsp;'.join(
+                f'<span style="color:{c};">&#9632;</span>&nbsp;{n}'
+                for _, c, n in series_defs
+            )
+            header_html = (
+                f'<span style="font-weight:bold;">{title}</span>'
+                f'&nbsp;<span style="color:#888;">({y_label})</span>'
+                + (f'&nbsp;&nbsp;&nbsp;{legend_parts}' if legend_parts else '')
+            )
+            header = QLabel()
+            header.setText(header_html)
+            header.setContentsMargins(2, 1, 2, 0)
+
             view = QChartView(chart)
             view.setMinimumWidth(200)
-            view.setMinimumHeight(160)
-            charts_layout.addWidget(view)
+            view.setMinimumHeight(150)
+
+            container = QWidget()
+            c_layout = QVBoxLayout(container)
+            c_layout.setContentsMargins(0, 0, 0, 0)
+            c_layout.setSpacing(0)
+            c_layout.addWidget(header)
+            c_layout.addWidget(view)
+
+            charts_layout.addWidget(container, i // _COLS, i % _COLS)
 
         scroll.setWidget(charts_widget)
         root.addWidget(scroll)
@@ -184,12 +207,12 @@ class TelemetryPanel(QWidget):
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def set_live(self, hat, label='Emulador'):
+    def set_live(self, hat, label='Emulator'):
         self._timer.stop()
         self._hat = hat
         self.clear()
         self._t0 = monotonic()
-        self._status_label.setText(f'Fuente: {label}')
+        self._status_label.setText(f'Source: {label}')
         self._timer.start(200)
 
     def set_recording(self, path):
@@ -220,7 +243,7 @@ class TelemetryPanel(QWidget):
             duration = records[-1].timestamp - records[0].timestamp
             for x_axis in self._x_axes:
                 x_axis.setRange(0, max(duration, 0.1))
-        self._status_label.setText(f'Grabación: {os.path.basename(path)}')
+        self._status_label.setText(f'Recording: {os.path.basename(path)}')
 
     def clear(self):
         for series in self._series.values():
@@ -302,7 +325,7 @@ class SenseEmuDesktop(QMainWindow):
         top_layout = QHBoxLayout(top_widget)
 
         # Left: LED Matrix
-        self.matrix = LEDMatrixWidget()
+        self.matrix = LEDMatrixWidget(self.controller.screen)
         top_layout.addWidget(self.matrix, 1)
 
         # Right: scrollable controls
@@ -346,11 +369,11 @@ class SenseEmuDesktop(QMainWindow):
         controls_layout.addWidget(env_group)
 
         # Telemetry source selector
-        source_group = QGroupBox("Fuente de telemetría")
+        source_group = QGroupBox("Telemetry source")
         source_layout = QHBoxLayout(source_group)
-        self._btn_emu = QPushButton("Emulador")
-        self._btn_hat = QPushButton("Sense HAT real")
-        self._btn_rec = QPushButton("Abrir grabación...")
+        self._btn_emu = QPushButton("Emulator")
+        self._btn_hat = QPushButton("Real Sense HAT")
+        self._btn_rec = QPushButton("Open recording…")
         source_layout.addWidget(self._btn_emu)
         source_layout.addWidget(self._btn_hat)
         source_layout.addWidget(self._btn_rec)
@@ -359,7 +382,7 @@ class SenseEmuDesktop(QMainWindow):
             _sh.SenseHat()
         except Exception:
             self._btn_hat.setEnabled(False)
-            self._btn_hat.setToolTip("Sense HAT no detectada")
+            self._btn_hat.setToolTip("Sense HAT not detected")
         self._btn_emu.clicked.connect(self._use_emulator)
         self._btn_hat.clicked.connect(self._use_real_hat)
         self._btn_rec.clicked.connect(self._open_recording)
@@ -402,32 +425,94 @@ class SenseEmuDesktop(QMainWindow):
         QVBoxLayout(main_widget).addWidget(splitter)
         self.setCentralWidget(main_widget)
 
+        self._build_menu()
+
         # Start live from emulator by default
         self._use_emulator()
+
+    # ── Menu ─────────────────────────────────────────────────────────────────
+
+    def _build_menu(self):
+        mb = self.menuBar()
+
+        # File
+        file_menu = mb.addMenu("&File")
+
+        act_open = QAction("&Open trace…", self)
+        act_open.setShortcut(QKeySequence("Ctrl+O"))
+        act_open.setStatusTip("Open a recorded trace file (.bin)")
+        act_open.triggered.connect(self._open_recording)
+        file_menu.addAction(act_open)
+
+        file_menu.addSeparator()
+
+        act_exit = QAction("E&xit", self)
+        act_exit.setShortcut(QKeySequence("Ctrl+Q"))
+        act_exit.triggered.connect(self.close)
+        file_menu.addAction(act_exit)
+
+        # View
+        view_menu = mb.addMenu("&View")
+
+        self._act_telemetry = QAction("&Telemetry charts", self)
+        self._act_telemetry.setCheckable(True)
+        self._act_telemetry.setChecked(True)
+        self._act_telemetry.setShortcut(QKeySequence("Ctrl+T"))
+        self._act_telemetry.setStatusTip("Show or hide the telemetry charts panel")
+        self._act_telemetry.toggled.connect(self._toggle_telemetry)
+        view_menu.addAction(self._act_telemetry)
+
+        # Settings (stub)
+        settings_menu = mb.addMenu("&Settings")
+        act_prefs = QAction("Preferences…", self)
+        act_prefs.setEnabled(False)
+        settings_menu.addAction(act_prefs)
+
+        # Help
+        help_menu = mb.addMenu("&Help")
+
+        act_about = QAction("&About…", self)
+        act_about.triggered.connect(self._show_about)
+        help_menu.addAction(act_about)
+
+    def _toggle_telemetry(self, visible):
+        self.telemetry.setVisible(visible)
+
+    def _show_about(self):
+        from PySide6 import __version__ as pyside_ver
+        QMessageBox.about(
+            self,
+            'About Sense HAT Emulator',
+            '<b>Sense HAT Emulator</b><br><br>'
+            'Cross-platform emulator for the Raspberry Pi Sense HAT.<br>'
+            'Compatible with the official <i>sense-hat</i> API.<br><br>'
+            f'<small>PySide6 {pyside_ver} &nbsp;·&nbsp; '
+            f'Python {sys.version.split()[0]}</small>',
+        )
 
     # ── Source actions ────────────────────────────────────────────────────────
 
     def _use_emulator(self):
         from sense_emu.sense_hat import SenseHat
-        self.telemetry.set_live(SenseHat(), label='Emulador')
+        self.telemetry.set_live(SenseHat(), label='Emulator')
 
     def _use_real_hat(self):
         try:
             import sense_hat as sh
-            self.telemetry.set_live(sh.SenseHat(), label='Sense HAT real')
+            self.telemetry.set_live(sh.SenseHat(), label='Real Sense HAT')
         except (ImportError, OSError) as e:
             QMessageBox.critical(self, 'Error',
-                                 f'No se pudo conectar a la Sense HAT: {e}')
+                                 f'Could not connect to Sense HAT: {e}')
 
     def _open_recording(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, 'Abrir grabación', '',
-            'Grabaciones (*.bin);;Todos los ficheros (*)')
+            self, 'Open recording', '',
+            'Recordings (*.bin);;All files (*)')
         if path:
             try:
                 self.telemetry.set_recording(path)
             except ValueError as e:
-                QMessageBox.critical(self, 'Error al abrir grabación', str(e))
+                QMessageBox.critical(self, 'Error opening recording', str(e))
 
     # ── Sensor control ────────────────────────────────────────────────────────
 

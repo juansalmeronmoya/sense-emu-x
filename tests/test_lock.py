@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import pytest
 from unittest.mock import patch
@@ -147,6 +148,7 @@ class TestLockFilenameWindows:
 
 
 class TestPidExistsEPERM:
+    @pytest.mark.skipif(sys.platform == 'win32', reason='Uses os.kill, not available on Windows pid_exists')
     def test_eperm_means_exists(self):
         import errno
         with patch('os.kill', side_effect=OSError(errno.EPERM, 'not permitted')):
@@ -159,6 +161,7 @@ from sense_emu.lock import pid_exists, lock_filename, EmulatorLock
 
 
 class TestPidExistsRaise:
+    @pytest.mark.skipif(sys.platform == 'win32', reason='Uses os.kill, not available on Windows pid_exists')
     def test_raises_on_unexpected_oserror(self):
         with patch('os.kill', side_effect=OSError(errno.EACCES, 'permission denied')):
             with pytest.raises(OSError):

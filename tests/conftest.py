@@ -1,8 +1,10 @@
 import io
 import os
+import sys
 import mmap
 import struct
 import time
+import socket
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -73,14 +75,20 @@ def tmp_lock_file(tmp_path):
 # Fixture: stick address in a temp dir so we don't collide
 # ---------------------------------------------------------------------------
 
+def _make_stick_address(tmp_path):
+    if sys.platform.startswith('win'):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.bind(('127.0.0.1', 0))
+            port = s.getsockname()[1]
+        return (socket.AF_INET, socket.SOCK_DGRAM, ('127.0.0.1', port))
+    return (socket.AF_UNIX, socket.SOCK_DGRAM, str(tmp_path / 'stick'))
+
+
 @pytest.fixture
 def tmp_stick_addr(tmp_path):
-    import socket
-    addr = str(tmp_path / 'stick')
-    with patch(
-        'sense_emu.stick.stick_address',
-        return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, addr),
-    ):
+    family, sock_type, addr = _make_stick_address(tmp_path)
+    with patch('sense_emu.stick.stick_address',
+               return_value=(family, sock_type, addr)):
         yield addr
 
 
@@ -98,9 +106,7 @@ def emulator(tmp_path):
         b'\x00\x00' * 64 + bytes(GAMMA_DEFAULT),
     )
     lock_path = str(tmp_path / 'lock')
-    import socket
-    stick_addr = str(tmp_path / 'stick')
-
+    stick_family, stick_sock_type, stick_addr = _make_stick_address(tmp_path)
     patches = [
         patch('sense_emu.pressure.pressure_filename', return_value=pressure_path),
         patch('sense_emu.humidity.humidity_filename', return_value=humidity_path),
@@ -108,7 +114,7 @@ def emulator(tmp_path):
         patch('sense_emu.screen.screen_filename',     return_value=screen_path),
         patch('sense_emu.lock.lock_filename',         return_value=lock_path),
         patch('sense_emu.stick.stick_address',
-              return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, stick_addr)),
+              return_value=(stick_family, stick_sock_type, stick_addr)),
     ]
     for p in patches:
         p.start()

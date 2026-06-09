@@ -36,7 +36,7 @@ class TestInitI18n:
             i18n_mod.init_i18n()  # should not raise
 
     def test_init_recovers_from_missing_bindtextdomain(self):
-        with patch('locale.bindtextdomain', side_effect=AttributeError):
+        with patch('locale.bindtextdomain', side_effect=AttributeError, create=True):
             import sys
             with patch.object(sys, 'platform', 'darwin'):
                 i18n_mod.init_i18n()  # should silently return
@@ -49,14 +49,14 @@ class TestInitI18n:
     def test_init_recovers_windows_intl_missing(self):
         import ctypes
         from unittest.mock import MagicMock
-        with patch('locale.bindtextdomain', side_effect=AttributeError), \
+        with patch('locale.bindtextdomain', side_effect=AttributeError, create=True), \
              patch('sys.platform', 'win32'), \
              patch('ctypes.cdll') as mock_cdll:
             mock_cdll.LoadLibrary.side_effect = OSError('no intl.dll')
             i18n_mod.init_i18n()  # should silently return
 
     def test_init_windows_intl_unavailable(self):
-        with patch('locale.bindtextdomain', side_effect=AttributeError), \
+        with patch('locale.bindtextdomain', side_effect=AttributeError, create=True), \
              patch('sys.platform', 'win32'), \
              patch('ctypes.cdll') as mock_cdll:
             mock_cdll.LoadLibrary.side_effect = OSError('no intl.dll')

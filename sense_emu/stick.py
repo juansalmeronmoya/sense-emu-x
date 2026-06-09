@@ -410,7 +410,7 @@ class StickServer:
     def __init__(self):
         family, sock_type, addr = stick_address()
         server = socket.socket(family, sock_type)
-        if family == socket.AF_UNIX:
+        if family != socket.AF_INET:
             try:
                 # Kill any pre-existing socket
                 os.unlink(addr)
@@ -452,7 +452,7 @@ class StickServer:
             family = server.family
             addr = server.getsockname()
             server.close()
-            if family == socket.AF_UNIX:
+            if family != socket.AF_INET:
                 # Only works because socket name is guaranteed to be absolute
                 os.unlink(addr)
 

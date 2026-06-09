@@ -1,3 +1,4 @@
+import sys
 import time
 import struct
 import socket
@@ -39,7 +40,7 @@ class TestInputEvent:
 class TestStickAddress:
     def test_returns_three_tuple(self):
         family, sock_type, addr = stick_address()
-        assert isinstance(addr, str)
+        assert isinstance(addr, (str, tuple))
 
 
 class TestStickServer:
@@ -397,28 +398,32 @@ class TestStickServerServe:
         server = StickServer()
         _time.sleep(0.05)  # let server thread start
 
-        # The server is bound to tmp_stick_addr
         addr = tmp_stick_addr
-        client = _socket_mod.socket(_socket_mod.AF_UNIX, _socket_mod.SOCK_DGRAM)
-        client_path = addr + '-client-%d' % id(client)
-        try:
-            os.unlink(client_path)
-        except OSError:
-            pass
-        client.bind(client_path)
-        client.connect(addr)
-        client.send(b'hello')
-        _time.sleep(0.05)  # let server process hello
-
-        # Send data through server
-        buf = b'\x00' * 24
-        server.send(buf)
-        _time.sleep(0.2)  # let server send data
-
-        # Close client and server
-        client.close()
-        try:
-            os.unlink(client_path)
-        except OSError:
-            pass
+        if sys.platform.startswith('win'):
+            client = _socket_mod.socket(_socket_mod.AF_INET, _socket_mod.SOCK_DGRAM)
+            client.bind(('127.0.0.1', 0))
+            client.connect(addr)
+            client.send(b'hello')
+            _time.sleep(0.05)
+            server.send(b'\x00' * 24)
+            _time.sleep(0.2)
+            client.close()
+        else:
+            client = _socket_mod.socket(_socket_mod.AF_UNIX, _socket_mod.SOCK_DGRAM)
+            client_path = addr + '-client-%d' % id(client)
+            try:
+                os.unlink(client_path)
+            except OSError:
+                pass
+            client.bind(client_path)
+            client.connect(addr)
+            client.send(b'hello')
+            _time.sleep(0.05)
+            server.send(b'\x00' * 24)
+            _time.sleep(0.2)
+            client.close()
+            try:
+                os.unlink(client_path)
+            except OSError:
+                pass
         server.close()  # triggers _serve finally block

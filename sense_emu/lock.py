@@ -33,6 +33,8 @@ if sys.platform.startswith('win'):
     STILL_ACTIVE = 259
 
     def pid_exists(pid):
+        if pid == 0:
+            return True
         h = kernel32.OpenProcess(PROCESS_QUERY_INFORMATION, 0, pid)
         try:
             if not h:

@@ -1,4 +1,5 @@
 import io
+import sys
 import csv
 import time
 import pytest
@@ -70,6 +71,7 @@ class TestDumpMain:
             rows = list(csv.reader(f))
         assert all(len(row) == 17 for row in rows)
 
+    @pytest.mark.skipif(sys.platform == 'win32', reason='%s strftime format not supported on Windows')
     def test_custom_timestamp_format(self, app, sample_recording, tmp_path):
         out_file = str(tmp_path / 'out.csv')
         app(['--timestamp-format', '%s', sample_recording, out_file])

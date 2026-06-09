@@ -8,10 +8,18 @@ We mock out:
 - SenseStick.__init__ → no-op (avoids socket connections)
 """
 import os
+import sys
 import struct
+import socket as _socket
 import pytest
 import numpy as np
 from unittest.mock import patch, MagicMock
+
+# Platform-appropriate socket family for stick tests
+if sys.platform.startswith('win'):
+    _STICK_FAMILY = _socket.AF_INET
+else:
+    _STICK_FAMILY = _socket.AF_UNIX
 
 
 # ---------------------------------------------------------------------------
@@ -67,9 +75,7 @@ def hat(tmp_screen_file, tmp_lock_file, tmp_stick_addr):
          patch('sense_emu.sense_hat.RTIMU', rtimu_mock), \
          patch('sense_emu.lock.lock_filename', return_value=tmp_lock_file), \
          patch('sense_emu.stick.stick_address',
-               return_value=(__import__('socket').AF_UNIX,
-                             __import__('socket').SOCK_DGRAM,
-                             tmp_stick_addr)):
+               return_value=(_STICK_FAMILY, _socket.SOCK_DGRAM, tmp_stick_addr)):
         from sense_emu import sense_hat as sh_mod
         # Reload to pick up patches
         import importlib
@@ -599,7 +605,6 @@ class TestSenseHatInit:
     def test_full_init(self, tmp_screen_file, tmp_lock_file, tmp_stick_addr):
         """Cover __init__ body (lines 78-145)."""
         rtimu_mock = _make_rtimu_mock()
-        import socket
         # Write our PID to the lock file so lock.wait() returns True
         with open(tmp_lock_file, 'w') as f:
             f.write('%d\n' % os.getpid())
@@ -610,7 +615,7 @@ class TestSenseHatInit:
              patch('sense_emu.sense_hat.RTIMU', rtimu_mock), \
              patch('sense_emu.lock.lock_filename', return_value=tmp_lock_file), \
              patch('sense_emu.stick.stick_address',
-                   return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, tmp_stick_addr)):
+                   return_value=(_STICK_FAMILY, _socket.SOCK_DGRAM, tmp_stick_addr)):
             importlib.reload(sh_mod)
             # Create a real StickServer so SenseStick can connect
             from sense_emu.stick import StickServer
@@ -626,7 +631,6 @@ class TestSenseHatInit:
     def test_init_when_lock_not_held_spawns_gui(self, tmp_screen_file, tmp_lock_file, tmp_stick_addr):
         """Cover lines 79-91: when lock.wait() returns False, spawns GUI."""
         rtimu_mock = _make_rtimu_mock()
-        import socket
         # Don't write lock file, so lock.wait() returns False
         import sense_emu.sense_hat as sh_mod
         import importlib
@@ -634,7 +638,7 @@ class TestSenseHatInit:
              patch('sense_emu.sense_hat.RTIMU', rtimu_mock), \
              patch('sense_emu.lock.lock_filename', return_value=tmp_lock_file), \
              patch('sense_emu.stick.stick_address',
-                   return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, tmp_stick_addr)), \
+                   return_value=(_STICK_FAMILY, _socket.SOCK_DGRAM, tmp_stick_addr)), \
              patch('sense_emu.sense_hat.sp.Popen') as mock_popen:
             importlib.reload(sh_mod)
             from sense_emu.stick import StickServer
@@ -651,7 +655,6 @@ class TestSenseHatInit:
     def test_init_no_fb_device_raises(self, tmp_lock_file, tmp_stick_addr):
         """Cover line 95: OSError when fb_device is None."""
         rtimu_mock = _make_rtimu_mock()
-        import socket
         with open(tmp_lock_file, 'w') as f:
             f.write('%d\n' % os.getpid())
         import sense_emu.sense_hat as sh_mod
@@ -660,7 +663,7 @@ class TestSenseHatInit:
              patch('sense_emu.sense_hat.RTIMU', rtimu_mock), \
              patch('sense_emu.lock.lock_filename', return_value=tmp_lock_file), \
              patch('sense_emu.stick.stick_address',
-                   return_value=(socket.AF_UNIX, socket.SOCK_DGRAM, tmp_stick_addr)):
+                   return_value=(_STICK_FAMILY, _socket.SOCK_DGRAM, tmp_stick_addr)):
             importlib.reload(sh_mod)
             with patch.object(sh_mod.SenseHat, '_get_fb_device', return_value=None):
                 with pytest.raises(OSError, match='Cannot detect'):

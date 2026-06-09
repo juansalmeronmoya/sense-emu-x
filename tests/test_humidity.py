@@ -108,9 +108,11 @@ class TestHumidityFilename:
         assert 'rpi-sense-emu-humidity' in result
 
     def test_no_shm_uses_tmp(self):
-        with patch('os.path.exists', return_value=False):
+        with patch('sys.platform', 'linux'), \
+             patch('os.path.exists', return_value=False):
             result = humidity_filename()
-        assert result == '/tmp/rpi-sense-emu-humidity'
+        import os
+        assert result == os.path.join('/tmp', 'rpi-sense-emu-humidity')
 
     def test_windows_path(self):
         with patch('sys.platform', 'win32'), \
