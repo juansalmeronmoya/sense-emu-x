@@ -400,6 +400,55 @@ class TestSenseEmuDesktop:
             assert window._settings['max_samples'] == 200
 
 
+class TestJoystickEvents:
+    """The GUI joystick must send real evdev events to the StickServer."""
+
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def _sent_events(self, mock_stick):
+        import struct
+        from sense_emu.stick import SenseStick
+        return [struct.unpack(SenseStick.EVENT_FORMAT, c[0][0])
+                for c in mock_stick.send.call_args_list]
+
+    @pytest.mark.parametrize('direction,key_attr', [
+        ('UP', 'KEY_UP'), ('DOWN', 'KEY_DOWN'), ('LEFT', 'KEY_LEFT'),
+        ('RIGHT', 'KEY_RIGHT'), ('MIDDLE', 'KEY_ENTER'),
+    ])
+    def test_press_sends_press_and_release(self, qtbot, emulator,
+                                           tmp_screen_file, direction, key_attr):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            window._on_stick_press(direction)
+            events = self._sent_events(mock_stick)
+        assert len(events) == 2
+        expected_key = getattr(SenseStick, key_attr)
+        (_, _, t1, code1, val1), (_, _, t2, code2, val2) = events
+        assert t1 == t2 == SenseStick.EV_KEY
+        assert code1 == code2 == expected_key
+        assert val1 == SenseStick.STATE_PRESS
+        assert val2 == SenseStick.STATE_RELEASE
+
+    def test_keyboard_arrow_sends_real_events(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtCore import QEvent
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            event = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)
+            window.keyPressEvent(event)
+            events = self._sent_events(mock_stick)
+        assert len(events) == 2
+        assert events[0][3] == SenseStick.KEY_UP
+
+
 class TestKeyboardJoystick:
     def _make_window(self, qtbot, emulator, tmp_screen_file):
         from sense_emu.pyside_app import SenseEmuDesktop

@@ -29,7 +29,7 @@ from functools import wraps
 from collections import namedtuple
 from threading import Thread, Event
 from queue import Queue, Empty
-from time import sleep
+from time import sleep, time
 
 AF_UNIX = getattr(socket, 'AF_UNIX', None)
 
@@ -406,6 +406,48 @@ class SenseStick:
     def direction_any(self, value):
         self._callbacks['*'] = self._wrap_callback(value)
         self._start_stop_thread()
+
+
+# Canonical direction-name → evdev key-code mapping, shared by the GUI and
+# TUI front-ends when synthesizing joystick events for the StickServer
+STICK_KEYS = {
+    'up':     SenseStick.KEY_UP,
+    'down':   SenseStick.KEY_DOWN,
+    'left':   SenseStick.KEY_LEFT,
+    'right':  SenseStick.KEY_RIGHT,
+    'middle': SenseStick.KEY_ENTER,
+    }
+
+
+def make_stick_event(key_code, state, when=None):
+    """
+    Builds a binary evdev-compatible event for *key_code* (one of the
+    ``SenseStick.KEY_*`` constants) and *state* (one of the
+    ``SenseStick.STATE_*`` constants), suitable for :meth:`StickServer.send`.
+    """
+    if when is None:
+        when = time()
+    tv_sec = int(when)
+    tv_usec = int((when - tv_sec) * 1_000_000)
+    return struct.pack(
+        SenseStick.EVENT_FORMAT,
+        tv_sec, tv_usec, SenseStick.EV_KEY, key_code, state)
+
+
+def rotate_key(key_code, rotation):
+    """
+    Remaps a directional *key_code* according to the HAT view *rotation*
+    (degrees clockwise, multiple of 90). With the view rotated 90° clockwise,
+    pushing "up" on screen corresponds to "right" on the unrotated HAT.
+    ENTER (middle) is unaffected by rotation.
+    """
+    if key_code == SenseStick.KEY_ENTER:
+        return key_code
+    # clockwise cycle of directions as seen on the unrotated HAT
+    cycle = [SenseStick.KEY_UP, SenseStick.KEY_RIGHT,
+             SenseStick.KEY_DOWN, SenseStick.KEY_LEFT]
+    steps = (rotation // 90) % 4
+    return cycle[(cycle.index(key_code) + steps) % 4]
 
 
 class StickServer:

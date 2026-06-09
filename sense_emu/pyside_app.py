@@ -15,6 +15,7 @@ from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 
 from .core import EmulatorController
 from .screen import screen_filename
+from .stick import SenseStick, STICK_KEYS, make_stick_event
 from .common import HEADER_REC, DATA_REC, DataRecord
 
 
@@ -699,7 +700,11 @@ class SenseEmuDesktop(QMainWindow):
     # ── Sensor control ────────────────────────────────────────────────────────
 
     def _on_stick_press(self, direction):
-        print(f"Joystick {direction} pressed")
+        key = STICK_KEYS[direction.lower()]
+        self.controller.stick.send(
+            make_stick_event(key, SenseStick.STATE_PRESS))
+        self.controller.stick.send(
+            make_stick_event(key, SenseStick.STATE_RELEASE))
 
     def update_sensors(self):
         pitch    = self.sliders["Pitch"].value()

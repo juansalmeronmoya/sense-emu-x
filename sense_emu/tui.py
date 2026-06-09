@@ -1,7 +1,5 @@
 import io
 import os
-import struct
-import time
 from time import monotonic
 
 from textual.app import App, ComposeResult
@@ -12,6 +10,7 @@ from textual.screen import ModalScreen
 
 from .core import EmulatorController
 from .screen import screen_filename
+from .stick import SenseStick, make_stick_event
 from .common import HEADER_REC, DATA_REC, DataRecord
 
 
@@ -36,22 +35,16 @@ def _parse_recording(path):
     return records
 
 
-# ── Joystick event helpers ────────────────────────────────────────────────────
+# ── Joystick event constants (canonical values live in stick.SenseStick) ──────
 
-_EV_KEY       = 0x01
-_KEY_UP       = 103
-_KEY_LEFT     = 105
-_KEY_RIGHT    = 106
-_KEY_DOWN     = 108
-_KEY_ENTER    = 28
-_EVENT_FORMAT = 'llHHI'
-
-
-def _make_joystick_event(key_code, state):
-    now    = time.time()
-    tv_sec  = int(now)
-    tv_usec = int((now - tv_sec) * 1_000_000)
-    return struct.pack(_EVENT_FORMAT, tv_sec, tv_usec, _EV_KEY, key_code, state)
+_EV_KEY       = SenseStick.EV_KEY
+_KEY_UP       = SenseStick.KEY_UP
+_KEY_LEFT     = SenseStick.KEY_LEFT
+_KEY_RIGHT    = SenseStick.KEY_RIGHT
+_KEY_DOWN     = SenseStick.KEY_DOWN
+_KEY_ENTER    = SenseStick.KEY_ENTER
+_EVENT_FORMAT = SenseStick.EVENT_FORMAT
+_make_joystick_event = make_stick_event
 
 
 # ── LED Matrix ────────────────────────────────────────────────────────────────
