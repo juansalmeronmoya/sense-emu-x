@@ -3,7 +3,9 @@ import sys
 import time
 import pytest
 from unittest.mock import patch
-from sense_emu.lock import EmulatorLock, pid_exists, lock_filename, _LOCK_MAGIC
+from sense_emu.lock import (
+    EmulatorLock, pid_exists, lock_filename, process_start_time, _LOCK_MAGIC,
+)
 
 
 class TestPidExists:
@@ -218,3 +220,87 @@ class TestRecycledPid:
         lock.acquire()
         assert lock.mine is True
         lock.release()
+
+
+class TestProcessStartTime:
+    def test_current_process_has_start_time(self):
+        st = process_start_time(os.getpid())
+        assert st is not None
+        assert isinstance(st, int)
+
+    def test_dead_process_has_no_start_time(self):
+        assert process_start_time(999999999) is None
+
+    def test_pid_zero_has_no_start_time(self):
+        assert process_start_time(0) is None
+
+    def test_start_time_is_stable(self):
+        # Same process must report the same start time on repeated calls
+        assert process_start_time(os.getpid()) == process_start_time(os.getpid())
+
+
+class TestRecycledPidStartTime:
+    """A lock whose PID is *alive* but belongs to a different process (recycled
+    PID) must be detected as stale via the recorded process start time."""
+
+    def test_write_pid_records_start_time(self, tmp_lock_file):
+        lock = EmulatorLock('test')
+        lock._write_pid()
+        with open(tmp_lock_file) as f:
+            assert int(f.readline().strip()) == os.getpid()
+            assert f.readline().strip() == _LOCK_MAGIC
+            assert int(f.readline().strip()) == process_start_time(os.getpid())
+        lock.release()
+
+    def test_read_start_time_roundtrip(self, tmp_lock_file):
+        lock = EmulatorLock('test')
+        lock._write_pid()
+        assert lock._read_start_time() == process_start_time(os.getpid())
+        lock.release()
+
+    def test_read_start_time_none_for_two_line_file(self, tmp_lock_file):
+        # Legacy two-line lock (pid + magic, no start time)
+        with open(tmp_lock_file, 'w') as f:
+            f.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))
+        lock = EmulatorLock('test')
+        assert lock._read_start_time() is None
+
+    def test_is_stale_true_when_start_time_differs(self, tmp_lock_file):
+        # Live PID (ours) + magic, but a recorded start time that does NOT match
+        # our actual one => the PID was recycled => stale.
+        with open(tmp_lock_file, 'w') as f:
+            f.write('%d\n%s\n%d\n' % (os.getpid(), _LOCK_MAGIC, 1))
+        lock = EmulatorLock('test')
+        assert lock._is_stale() is True
+
+    def test_is_stale_false_when_start_time_matches(self, tmp_lock_file):
+        with open(tmp_lock_file, 'w') as f:
+            f.write('%d\n%s\n%d\n' % (
+                os.getpid(), _LOCK_MAGIC, process_start_time(os.getpid())))
+        lock = EmulatorLock('test')
+        assert lock._is_stale() is False
+
+    def test_is_stale_false_for_legacy_two_line_live_pid(self, tmp_lock_file):
+        # Backward compat: a two-line lock with a live PID is NOT stale
+        with open(tmp_lock_file, 'w') as f:
+            f.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))
+        lock = EmulatorLock('test')
+        assert lock._is_stale() is False
+
+    def test_acquire_breaks_recycled_pid_lock(self, tmp_lock_file):
+        # A live PID with a mismatched start time must not wedge the lock
+        with open(tmp_lock_file, 'w') as f:
+            f.write('%d\n%s\n%d\n' % (os.getpid(), _LOCK_MAGIC, 1))
+        lock = EmulatorLock('test')
+        lock.acquire()
+        assert lock.mine is True
+        # After acquire the file records OUR real start time
+        assert lock._read_start_time() == process_start_time(os.getpid())
+        lock.release()
+
+    def test_wait_ignores_recycled_pid_lock(self, tmp_lock_file):
+        # wait() must not report a recycled-PID lock as a live emulator
+        with open(tmp_lock_file, 'w') as f:
+            f.write('%d\n%s\n%d\n' % (os.getpid(), _LOCK_MAGIC, 1))
+        lock = EmulatorLock('test')
+        assert lock.wait(timeout=0.2) is False

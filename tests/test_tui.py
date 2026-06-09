@@ -325,8 +325,10 @@ class TestSenseEmuTUI:
         mock_led  = MagicMock()
         mock_sens = MagicMock()
         mock_hat  = MagicMock()
+        # _activate_emulator does a local `from .sense_hat import SenseHat`, so
+        # the mock must be installed on the source module, not on sense_emu.tui.
         with patch.object(app, 'query_one', side_effect=[mock_led, mock_sens]), \
-             patch('sense_emu.tui.SenseHat', return_value=mock_hat, create=True), \
+             patch('sense_emu.sense_hat.SenseHat', return_value=mock_hat), \
              patch('sense_emu.tui.EmulatorController', return_value=patch_emulator):
             app.on_mount()
         assert app.controller is patch_emulator
@@ -597,7 +599,8 @@ class TestSenseEmuTUI:
         mock_exit.assert_called_once()
         msg = mock_exit.call_args[1].get('message', '') or mock_exit.call_args[0][0]
         assert 'running' in msg.lower() or 'instance' in msg.lower() or 'emulator' in msg.lower()
-        assert not hasattr(app, 'controller')
+        # controller stays None so on_unmount can safely skip closing it
+        assert app.controller is None
 
     def test_action_replay_recording_pushes_screen(self, mock_controller):
         from sense_emu.tui import SenseEmuTUI

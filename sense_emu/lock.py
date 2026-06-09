@@ -30,9 +30,13 @@ if sys.platform.startswith('win'):
     kernel32 = ctypes.windll.kernel32
     DWORD = ctypes.c_ulong
     PROCESS_QUERY_INFORMATION = 0x0400
+    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
     ERROR_ACCESS_DENIED = 0x5
     ERROR_INVALID_PARAMETER = 0x57
     STILL_ACTIVE = 259
+
+    class _FILETIME(ctypes.Structure):
+        _fields_ = [('dwLowDateTime', DWORD), ('dwHighDateTime', DWORD)]
 
     def pid_exists(pid):
         if pid == 0:
@@ -54,6 +58,33 @@ if sys.platform.startswith('win'):
             raise OSError('unable to query exit code for pid %d' % pid)
         finally:
             kernel32.CloseHandle(h)
+
+    def process_start_time(pid):
+        """
+        Return an opaque, stable token identifying *when* *pid* started, or
+        ``None`` if it cannot be determined. Used to detect PID recycling: a
+        recycled PID reports a different creation time than the one recorded
+        when the lock was taken.
+        """
+        if pid == 0:
+            return None
+        h = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid)
+        if not h:
+            h = kernel32.OpenProcess(PROCESS_QUERY_INFORMATION, 0, pid)
+        if not h:
+            return None
+        try:
+            creation = _FILETIME()
+            exit_t = _FILETIME()
+            kernel_t = _FILETIME()
+            user_t = _FILETIME()
+            if kernel32.GetProcessTimes(
+                    h, ctypes.byref(creation), ctypes.byref(exit_t),
+                    ctypes.byref(kernel_t), ctypes.byref(user_t)):
+                return (creation.dwHighDateTime << 32) | creation.dwLowDateTime
+            return None
+        finally:
+            kernel32.CloseHandle(h)
 else:
     def pid_exists(pid):
         if pid == 0:
@@ -69,6 +100,29 @@ else:
                 raise
         else:
             return True
+
+    def process_start_time(pid):
+        """
+        Return an opaque, stable token identifying *when* *pid* started, or
+        ``None`` if it cannot be determined (e.g. on systems without
+        ``/proc``). Used to detect PID recycling.
+        """
+        if pid == 0:
+            return None
+        try:
+            with io.open('/proc/%d/stat' % pid, 'rb') as f:
+                data = f.read()
+        except (IOError, OSError):
+            return None
+        try:
+            # Field 2 (comm) is wrapped in parens and may itself contain spaces
+            # or parens, so split after the final ')'. starttime is field 22
+            # overall, i.e. index 19 of the remaining whitespace-split fields.
+            rparen = data.rfind(b')')
+            fields = data[rparen + 2:].split()
+            return int(fields[19])
+        except (IndexError, ValueError):
+            return None
 
 
 def lock_filename():
@@ -150,15 +204,27 @@ class EmulatorLock:
         return os.path.exists(self._filename)
 
     def _is_stale(self):
-        # True if the lock file exists but is invalid or the PID it references doesn't
+        # True if the lock file exists but is invalid, the PID it references
+        # doesn't exist, or that PID has been recycled to a different process.
         if not self._is_held():
             return False
         pid = self._read_pid()
         if pid is None:
             # File exists but has no valid sense_emu magic — treat as stale
-            # (handles recycled PIDs from other processes on Windows)
+            # (handles garbage/foreign files and recycled PIDs on Windows)
             return True
-        return not pid_exists(pid)
+        if not pid_exists(pid):
+            return True
+        # The PID is alive, but on Windows (and elsewhere) PIDs are recycled.
+        # If the lock recorded the holder's start time, make sure the live
+        # process is the *same* one — otherwise an unrelated process that
+        # happened to inherit the PID would wedge the lock forever.
+        stored = self._read_start_time()
+        if stored is not None:
+            current = process_start_time(pid)
+            if current is not None and current != stored:
+                return True
+        return False
 
     def _break_lock(self):
         # Unconditionally delete the file
@@ -179,6 +245,25 @@ class EmulatorLock:
         except (IOError, ValueError):
             return None
 
+    def _read_start_time(self):
+        # The recorded start time lives on the third line. Returns None for
+        # older two-line lock files or anything unparseable, in which case the
+        # recycled-PID check is simply skipped.
+        try:
+            with io.open(self._filename, 'rb') as lockfile:
+                lockfile.readline()  # pid
+                magic_line = lockfile.readline().decode('ascii').strip()
+                if magic_line != _LOCK_MAGIC:
+                    return None
+                start_line = lockfile.readline().decode('ascii').strip()
+                if not start_line:
+                    return None
+                return int(start_line)
+        except (IOError, ValueError):
+            return None
+
     def _write_pid(self):
+        start = process_start_time(os.getpid())
         with io.open(self._filename, 'x', encoding='ascii') as lockfile:
-            lockfile.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))
+            lockfile.write('%d\n%s\n%s\n' % (
+                os.getpid(), _LOCK_MAGIC, '' if start is None else start))

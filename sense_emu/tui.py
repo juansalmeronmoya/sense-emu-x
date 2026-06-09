@@ -331,6 +331,7 @@ class SenseEmuTUI(App):
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
     def on_mount(self):
+        self.controller = None
         try:
             self.controller = EmulatorController()
         except RuntimeError:
@@ -350,7 +351,8 @@ class SenseEmuTUI(App):
             self._player.stop()
         if hasattr(self, '_recorder') and self._recorder and self._recorder.running:
             self._recorder.stop()
-        self.controller.close()
+        if getattr(self, 'controller', None) is not None:
+            self.controller.close()
 
     def _activate_emulator(self):
         from .sense_hat import SenseHat

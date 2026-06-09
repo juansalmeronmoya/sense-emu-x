@@ -608,13 +608,14 @@ class TestSenseHatInit:
         rtimu_mock = _make_rtimu_mock()
         # Write our PID to the lock file so lock.wait() returns True
         with open(tmp_lock_file, 'w') as f:
-            f.write('%d\n' % os.getpid())
+            f.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))
         # Patch SenseStick to avoid real socket connection
         import sense_emu.sense_hat as sh_mod
         import importlib
         with patch.dict('sys.modules', {'RTIMU': rtimu_mock}), \
              patch('sense_emu.sense_hat.RTIMU', rtimu_mock), \
              patch('sense_emu.lock.lock_filename', return_value=tmp_lock_file), \
+             patch('sense_emu.sense_hat.sp.Popen') as mock_popen, \
              patch('sense_emu.stick.stick_address',
                    return_value=(_STICK_FAMILY, _socket.SOCK_DGRAM, tmp_stick_addr)):
             importlib.reload(sh_mod)
@@ -626,6 +627,8 @@ class TestSenseHatInit:
                 assert hat._rotation == 0
                 assert hat._fb_device == tmp_screen_file
                 hat._stick.close()
+                # Lock held by our PID, so no GUI subprocess is ever launched
+                mock_popen.assert_not_called()
             finally:
                 server.close()
 
@@ -657,18 +660,21 @@ class TestSenseHatInit:
         """Cover line 95: OSError when fb_device is None."""
         rtimu_mock = _make_rtimu_mock()
         with open(tmp_lock_file, 'w') as f:
-            f.write('%d\n' % os.getpid())
+            f.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))
         import sense_emu.sense_hat as sh_mod
         import importlib
         with patch.dict('sys.modules', {'RTIMU': rtimu_mock}), \
              patch('sense_emu.sense_hat.RTIMU', rtimu_mock), \
              patch('sense_emu.lock.lock_filename', return_value=tmp_lock_file), \
+             patch('sense_emu.sense_hat.sp.Popen') as mock_popen, \
              patch('sense_emu.stick.stick_address',
                    return_value=(_STICK_FAMILY, _socket.SOCK_DGRAM, tmp_stick_addr)):
             importlib.reload(sh_mod)
             with patch.object(sh_mod.SenseHat, '_get_fb_device', return_value=None):
                 with pytest.raises(OSError, match='Cannot detect'):
                     hat = sh_mod.SenseHat()
+            # Lock was held (our PID) so no GUI should ever be spawned
+            mock_popen.assert_not_called()
 
 
 class TestAdditionalSensorBranches:
