@@ -625,11 +625,92 @@ class TestJoystickEvents:
         from sense_emu.stick import SenseStick
         window = self._make_window(qtbot, emulator, tmp_screen_file)
         with patch.object(window.controller, 'stick') as mock_stick:
-            event = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)
-            window.keyPressEvent(event)
+            press = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)
+            window.keyPressEvent(press)
+            release = QKeyEvent(QEvent.KeyRelease, Qt.Key_Up, Qt.NoModifier)
+            window.keyReleaseEvent(release)
             events = self._sent_events(mock_stick)
         assert len(events) == 2
         assert events[0][3] == SenseStick.KEY_UP
+        assert events[0][4] == SenseStick.STATE_PRESS
+        assert events[1][4] == SenseStick.STATE_RELEASE
+
+
+class TestJoystickHold:
+    """Tests for press-and-hold (STATE_HOLD) behavior."""
+
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def _sent_events(self, mock_stick):
+        import struct
+        from sense_emu.stick import SenseStick
+        return [struct.unpack(SenseStick.EVENT_FORMAT, c[0][0])
+                for c in mock_stick.send.call_args_list]
+
+    def test_stick_pressed_sends_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            window._stick_pressed("UP")
+            events = self._sent_events(mock_stick)
+        assert len(events) == 1
+        assert events[0][4] == SenseStick.STATE_PRESS
+        window._hold_timer.stop()
+
+    def test_stick_released_sends_release(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            window._stick_pressed("DOWN")
+            window._stick_released("DOWN")
+            events = self._sent_events(mock_stick)
+        assert events[-1][4] == SenseStick.STATE_RELEASE
+        assert not window._hold_timer.isActive()
+
+    def test_send_hold_sends_hold_event(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._hold_direction = "LEFT"
+        with patch.object(window.controller, 'stick') as mock_stick:
+            window._send_hold()
+            events = self._sent_events(mock_stick)
+        assert events[0][4] == SenseStick.STATE_HOLD
+
+    def test_send_hold_noop_without_direction(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._hold_direction = None
+        with patch.object(window.controller, 'stick') as mock_stick:
+            window._send_hold()
+        mock_stick.send.assert_not_called()
+
+    def test_keyboard_autorepeat_sends_hold(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtCore import QEvent
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            event = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier,
+                              autorep=True)
+            window.keyPressEvent(event)
+            events = self._sent_events(mock_stick)
+        assert len(events) == 1
+        assert events[0][4] == SenseStick.STATE_HOLD
+
+    def test_keyboard_release_autorepeat_ignored(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtCore import QEvent
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            event = QKeyEvent(QEvent.KeyRelease, Qt.Key_Up, Qt.NoModifier,
+                              autorep=True)
+            window.keyReleaseEvent(event)
+        mock_stick.send.assert_not_called()
 
 
 class TestKeyboardJoystick:
@@ -648,56 +729,74 @@ class TestKeyboardJoystick:
         window.keyPressEvent(event)
         return event
 
-    def test_arrow_up_calls_stick(self, qtbot, emulator, tmp_screen_file):
-        window = self._make_window(qtbot, emulator, tmp_screen_file)
-        with patch.object(window, '_on_stick_press') as mock:
-            self._press_key(window, Qt.Key_Up)
-            mock.assert_called_once_with("UP")
+    def _sent_key_codes(self, window, qt_key):
+        import struct
+        from sense_emu.stick import SenseStick
+        events = []
+        with patch.object(window.controller, 'stick') as mock_stick:
+            self._press_key(window, qt_key)
+            events = [struct.unpack(SenseStick.EVENT_FORMAT, c[0][0])
+                      for c in mock_stick.send.call_args_list]
+        return events
 
-    def test_arrow_down_calls_stick(self, qtbot, emulator, tmp_screen_file):
+    def test_arrow_up_sends_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
         window = self._make_window(qtbot, emulator, tmp_screen_file)
-        with patch.object(window, '_on_stick_press') as mock:
-            self._press_key(window, Qt.Key_Down)
-            mock.assert_called_once_with("DOWN")
+        events = self._sent_key_codes(window, Qt.Key_Up)
+        assert len(events) >= 1
+        assert events[0][3] == SenseStick.KEY_UP
+        assert events[0][4] == SenseStick.STATE_PRESS
+        window._hold_timer.stop()
 
-    def test_arrow_left_calls_stick(self, qtbot, emulator, tmp_screen_file):
+    def test_arrow_down_sends_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
         window = self._make_window(qtbot, emulator, tmp_screen_file)
-        with patch.object(window, '_on_stick_press') as mock:
-            self._press_key(window, Qt.Key_Left)
-            mock.assert_called_once_with("LEFT")
+        events = self._sent_key_codes(window, Qt.Key_Down)
+        assert events[0][3] == SenseStick.KEY_DOWN
+        window._hold_timer.stop()
 
-    def test_arrow_right_calls_stick(self, qtbot, emulator, tmp_screen_file):
+    def test_arrow_left_sends_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
         window = self._make_window(qtbot, emulator, tmp_screen_file)
-        with patch.object(window, '_on_stick_press') as mock:
-            self._press_key(window, Qt.Key_Right)
-            mock.assert_called_once_with("RIGHT")
+        events = self._sent_key_codes(window, Qt.Key_Left)
+        assert events[0][3] == SenseStick.KEY_LEFT
+        window._hold_timer.stop()
 
-    def test_return_calls_stick_middle(self, qtbot, emulator, tmp_screen_file):
+    def test_arrow_right_sends_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
         window = self._make_window(qtbot, emulator, tmp_screen_file)
-        with patch.object(window, '_on_stick_press') as mock:
-            self._press_key(window, Qt.Key_Return)
-            mock.assert_called_once_with("MIDDLE")
+        events = self._sent_key_codes(window, Qt.Key_Right)
+        assert events[0][3] == SenseStick.KEY_RIGHT
+        window._hold_timer.stop()
 
-    def test_enter_calls_stick_middle(self, qtbot, emulator, tmp_screen_file):
+    def test_return_sends_enter_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
         window = self._make_window(qtbot, emulator, tmp_screen_file)
-        with patch.object(window, '_on_stick_press') as mock:
-            self._press_key(window, Qt.Key_Enter)
-            mock.assert_called_once_with("MIDDLE")
+        events = self._sent_key_codes(window, Qt.Key_Return)
+        assert events[0][3] == SenseStick.KEY_ENTER
+        window._hold_timer.stop()
 
-    def test_other_key_does_not_call_stick(self, qtbot, emulator, tmp_screen_file):
+    def test_enter_key_sends_enter_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
         window = self._make_window(qtbot, emulator, tmp_screen_file)
-        with patch.object(window, '_on_stick_press') as mock:
+        events = self._sent_key_codes(window, Qt.Key_Enter)
+        assert events[0][3] == SenseStick.KEY_ENTER
+        window._hold_timer.stop()
+
+    def test_other_key_does_not_send_event(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
             self._press_key(window, Qt.Key_Space)
-            mock.assert_not_called()
+        mock_stick.send.assert_not_called()
 
     def test_arrow_key_event_accepted(self, qtbot, emulator, tmp_screen_file):
         window = self._make_window(qtbot, emulator, tmp_screen_file)
-        with patch.object(window, '_on_stick_press'):
-            from PySide6.QtGui import QKeyEvent
-            from PySide6.QtCore import QEvent
-            event = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)
-            window.keyPressEvent(event)
-            assert event.isAccepted()
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtCore import QEvent
+        event = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)
+        window.keyPressEvent(event)
+        window._hold_timer.stop()
+        assert event.isAccepted()
 
 
 class TestTelemetryPanel:

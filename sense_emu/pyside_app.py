@@ -515,11 +515,21 @@ class SenseEmuDesktop(QMainWindow):
         mid_btn   = QPushButton("OK")
         for btn in (up_btn, down_btn, left_btn, right_btn, mid_btn):
             btn.setFixedSize(42, 32)
-        up_btn.clicked.connect(lambda:    self._on_stick_press("UP"))
-        down_btn.clicked.connect(lambda:  self._on_stick_press("DOWN"))
-        left_btn.clicked.connect(lambda:  self._on_stick_press("LEFT"))
-        right_btn.clicked.connect(lambda: self._on_stick_press("RIGHT"))
-        mid_btn.clicked.connect(lambda:   self._on_stick_press("MIDDLE"))
+            btn.setAutoRepeat(False)
+        up_btn.pressed.connect(lambda:    self._stick_pressed("UP"))
+        down_btn.pressed.connect(lambda:  self._stick_pressed("DOWN"))
+        left_btn.pressed.connect(lambda:  self._stick_pressed("LEFT"))
+        right_btn.pressed.connect(lambda: self._stick_pressed("RIGHT"))
+        mid_btn.pressed.connect(lambda:   self._stick_pressed("MIDDLE"))
+        up_btn.released.connect(lambda:    self._stick_released("UP"))
+        down_btn.released.connect(lambda:  self._stick_released("DOWN"))
+        left_btn.released.connect(lambda:  self._stick_released("LEFT"))
+        right_btn.released.connect(lambda: self._stick_released("RIGHT"))
+        mid_btn.released.connect(lambda:   self._stick_released("MIDDLE"))
+
+        self._hold_timer = QTimer(self)
+        self._hold_timer.timeout.connect(self._send_hold)
+        self._hold_direction = None
         joy_layout.addWidget(up_btn,    0, 1)
         joy_layout.addWidget(left_btn,  1, 0)
         joy_layout.addWidget(mid_btn,   1, 1)
@@ -835,11 +845,31 @@ class SenseEmuDesktop(QMainWindow):
     # ── Sensor control ────────────────────────────────────────────────────────
 
     def _on_stick_press(self, direction):
+        """Click-style press+release (used by keyboard events without hold)."""
         key = STICK_KEYS[direction.lower()]
         self.controller.stick.send(
             make_stick_event(key, SenseStick.STATE_PRESS))
         self.controller.stick.send(
             make_stick_event(key, SenseStick.STATE_RELEASE))
+
+    def _stick_pressed(self, direction):
+        key = STICK_KEYS[direction.lower()]
+        self.controller.stick.send(make_stick_event(key, SenseStick.STATE_PRESS))
+        self._hold_direction = direction
+        self._hold_timer.start(250)
+
+    def _stick_released(self, direction):
+        self._hold_timer.stop()
+        self._hold_direction = None
+        key = STICK_KEYS[direction.lower()]
+        self.controller.stick.send(make_stick_event(key, SenseStick.STATE_RELEASE))
+
+    def _send_hold(self):
+        if self._hold_direction is None:
+            return
+        key = STICK_KEYS[self._hold_direction.lower()]
+        self.controller.stick.send(make_stick_event(key, SenseStick.STATE_HOLD))
+        self._hold_timer.setInterval(100)
 
     def update_sensors(self):
         pitch    = self.sliders["Pitch"].value()
@@ -865,10 +895,31 @@ class SenseEmuDesktop(QMainWindow):
         }
         direction = _arrow_map.get(event.key())
         if direction is not None:
-            self._on_stick_press(direction)
+            key = STICK_KEYS[direction.lower()]
+            if event.isAutoRepeat():
+                self.controller.stick.send(make_stick_event(key, SenseStick.STATE_HOLD))
+            else:
+                self.controller.stick.send(make_stick_event(key, SenseStick.STATE_PRESS))
             event.accept()
         else:
             super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        _arrow_map = {
+            Qt.Key_Up:     "UP",
+            Qt.Key_Down:   "DOWN",
+            Qt.Key_Left:   "LEFT",
+            Qt.Key_Right:  "RIGHT",
+            Qt.Key_Return: "MIDDLE",
+            Qt.Key_Enter:  "MIDDLE",
+        }
+        direction = _arrow_map.get(event.key())
+        if direction is not None and not event.isAutoRepeat():
+            key = STICK_KEYS[direction.lower()]
+            self.controller.stick.send(make_stick_event(key, SenseStick.STATE_RELEASE))
+            event.accept()
+        else:
+            super().keyReleaseEvent(event)
 
     def closeEvent(self, event):
         self._save_settings()
