@@ -13,6 +13,7 @@ from .screen import screen_filename
 from .stick import SenseStick, make_stick_event
 from .recfile import parse_recording
 from .playback import Player
+from .recorder import Recorder
 
 _parse_recording = parse_recording
 
@@ -168,9 +169,13 @@ class RecordingPathScreen(ModalScreen):
 
     BINDINGS = [Binding("escape", "cancel", "Cancel")]
 
+    def __init__(self, title="Open recording file", **kwargs):
+        super().__init__(**kwargs)
+        self._dialog_title = title
+
     def compose(self) -> ComposeResult:
         with Vertical(id="rec-dialog"):
-            yield Label("Open recording file")
+            yield Label(self._dialog_title)
             yield Rule()
             yield Label("Path to .bin file:")
             yield Input(placeholder="/path/to/recording.bin", id="rec-path-input")
@@ -257,10 +262,11 @@ class SenseEmuTUI(App):
     """
 
     BINDINGS = [
-        Binding("ctrl+q", "quit",            "Quit",           show=True),
-        Binding("ctrl+o", "open_recording",  "Open Recording", show=True),
-        Binding("ctrl+p", "replay_recording", "Replay",        show=True),
-        Binding("ctrl+e", "use_emulator",    "Emulator",       show=True),
+        Binding("ctrl+q", "quit",             "Quit",        show=True),
+        Binding("ctrl+o", "open_recording",   "View",        show=True),
+        Binding("ctrl+p", "replay_recording", "Replay",      show=True),
+        Binding("ctrl+r", "toggle_recording", "Rec",         show=True),
+        Binding("ctrl+e", "use_emulator",     "Emulator",    show=True),
         # priority=True so these fire even when an Input widget has focus
         Binding("up",    "joy_up",    "↑", show=True, priority=True),
         Binding("down",  "joy_down",  "↓", show=True, priority=True),
@@ -334,12 +340,16 @@ class SenseEmuTUI(App):
             return
         self._player = None
         self._playback_timer = None
+        self._recorder = None
+        self._rec_timer = None
         self.query_one(LEDMatrix).set_screen_client(self.controller.screen)
         self._activate_emulator()
 
     def on_unmount(self):
         if hasattr(self, '_player') and self._player and self._player.running:
             self._player.stop()
+        if hasattr(self, '_recorder') and self._recorder and self._recorder.running:
+            self._recorder.stop()
         self.controller.close()
 
     def _activate_emulator(self):
@@ -422,6 +432,44 @@ class SenseEmuTUI(App):
 
     def action_replay_recording(self):
         self.push_screen(RecordingPathScreen(), self._on_replay_path)
+
+    def action_toggle_recording(self):
+        if self._recorder and self._recorder.running:
+            self._stop_recording()
+        else:
+            self.push_screen(RecordingPathScreen(title="Save recording"),
+                             self._on_record_path)
+
+    def _on_record_path(self, path):
+        if not path:
+            return
+        if self._player and self._player.running:
+            self._set_status("[red]Stop replay before recording[/red]")
+            return
+        self._recorder = Recorder(path)
+        self._recorder.start()
+        self._set_status("[red]● REC  0 records[/red]")
+        self._rec_timer = self.set_interval(0.5, self._poll_recording)
+
+    def _stop_recording(self):
+        if self._recorder:
+            self._recorder.stop()
+        if self._rec_timer:
+            self._rec_timer.stop()
+            self._rec_timer = None
+        self._set_status("[green]Recording saved[/green]")
+
+    def _poll_recording(self):
+        if self._recorder is None:
+            return
+        n = self._recorder.record_count
+        if self._recorder.running:
+            self._set_status(f"[red]● REC  {n} records[/red]")
+        else:
+            if self._rec_timer:
+                self._rec_timer.stop()
+                self._rec_timer = None
+            self._set_status("[green]Recording saved[/green]")
 
     def _on_replay_path(self, path):
         if not path:

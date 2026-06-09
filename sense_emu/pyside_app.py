@@ -18,6 +18,7 @@ from .screen import screen_filename
 from .stick import SenseStick, STICK_KEYS, make_stick_event
 from .recfile import parse_recording
 from .playback import Player
+from .recorder import Recorder
 
 _parse_recording = parse_recording
 
@@ -586,10 +587,27 @@ class SenseEmuDesktop(QMainWindow):
         self._playback_poll.setInterval(200)
         self._playback_poll.timeout.connect(self._poll_playback)
 
+        # ── Recording status bar ──────────────────────────────────────────────
+        self._rec_bar = QWidget()
+        rec_layout = QHBoxLayout(self._rec_bar)
+        rec_layout.setContentsMargins(4, 2, 4, 2)
+        self._rec_label = QLabel("● REC  0 records")
+        self._rec_label.setStyleSheet("color: red; font-weight: bold;")
+        self._rec_stop_btn = QPushButton("Stop recording")
+        self._rec_stop_btn.clicked.connect(self._stop_recording)
+        rec_layout.addWidget(self._rec_label, 1)
+        rec_layout.addWidget(self._rec_stop_btn)
+        self._rec_bar.setVisible(False)
+        self._recorder = None
+        self._rec_poll = QTimer(self)
+        self._rec_poll.setInterval(200)
+        self._rec_poll.timeout.connect(self._poll_recording)
+
         main_widget = QWidget()
         main_layout = QVBoxLayout(main_widget)
         main_layout.addWidget(self._splitter)
         main_layout.addWidget(self._playback_bar)
+        main_layout.addWidget(self._rec_bar)
         self.setCentralWidget(main_widget)
 
         geom = self._qsettings.value('geometry')
@@ -623,6 +641,12 @@ class SenseEmuDesktop(QMainWindow):
         act_replay.setStatusTip("Replay a recording into the emulator")
         act_replay.triggered.connect(self._start_playback)
         file_menu.addAction(act_replay)
+
+        self._act_record = QAction("&Start recording…", self)
+        self._act_record.setShortcut(QKeySequence("Ctrl+Shift+R"))
+        self._act_record.setStatusTip("Record emulator output to a file")
+        self._act_record.triggered.connect(self._toggle_recording)
+        file_menu.addAction(self._act_record)
 
         file_menu.addSeparator()
 
@@ -767,6 +791,47 @@ class SenseEmuDesktop(QMainWindow):
             self._playback_poll.stop()
             self._playback_bar.setVisible(False)
 
+    # ── Recording ─────────────────────────────────────────────────────────────
+
+    def _toggle_recording(self):
+        if self._recorder and self._recorder.running:
+            self._stop_recording()
+        else:
+            self._start_recording()
+
+    def _start_recording(self):
+        if self._player and self._player.running:
+            QMessageBox.warning(self, 'Cannot record',
+                                'Stop the active replay before recording.')
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, 'Save recording', '',
+            'Recordings (*.bin);;All files (*)')
+        if not path:
+            return
+        self._recorder = Recorder(path)
+        self._recorder.start()
+        self._rec_bar.setVisible(True)
+        self._rec_poll.start()
+        self._act_record.setText("&Stop recording")
+
+    def _stop_recording(self):
+        if self._recorder:
+            self._recorder.stop()
+        self._rec_poll.stop()
+        self._rec_bar.setVisible(False)
+        self._act_record.setText("&Start recording…")
+
+    def _poll_recording(self):
+        if self._recorder is None:
+            return
+        n = self._recorder.record_count
+        self._rec_label.setText(f"● REC  {n} records")
+        if not self._recorder.running:
+            self._rec_poll.stop()
+            self._rec_bar.setVisible(False)
+            self._act_record.setText("&Start recording…")
+
     # ── Sensor control ────────────────────────────────────────────────────────
 
     def _on_stick_press(self, direction):
@@ -809,6 +874,8 @@ class SenseEmuDesktop(QMainWindow):
         self._save_settings()
         if self._player and self._player.running:
             self._player.stop()
+        if self._recorder and self._recorder.running:
+            self._recorder.stop()
         self.telemetry._timer.stop()
         self.controller.close()
         super().closeEvent(event)

@@ -707,6 +707,121 @@ class TestSenseEmuTUI:
         app.on_unmount()
         mock_player.stop.assert_called_once()
 
+    def test_action_toggle_recording_pushes_screen_when_idle(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        app._recorder = None
+        with patch.object(app, 'push_screen') as mock_push:
+            app.action_toggle_recording()
+        mock_push.assert_called_once()
+
+    def test_action_toggle_recording_stops_when_running(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        mock_recorder = MagicMock()
+        mock_recorder.running = True
+        app._recorder = mock_recorder
+        app._rec_timer = None
+        mock_label = MagicMock()
+        app.query_one = MagicMock(return_value=mock_label)
+        app.action_toggle_recording()
+        mock_recorder.stop.assert_called_once()
+
+    def test_on_record_path_none_is_noop(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        app._player = None
+        app._recorder = None
+        app._rec_timer = None
+        app._on_record_path(None)
+
+    def test_on_record_path_blocked_during_replay(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        app._player = MagicMock()
+        app._player.running = True
+        app._recorder = None
+        app._rec_timer = None
+        mock_label = MagicMock()
+        app.query_one = MagicMock(return_value=mock_label)
+        app._on_record_path('/some/path.bin')
+        assert app._recorder is None
+
+    def test_on_record_path_starts_recorder(self, mock_controller, tmp_path):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        app._player = None
+        app._recorder = None
+        app._rec_timer = None
+        mock_label = MagicMock()
+        app.query_one = MagicMock(return_value=mock_label)
+        path = str(tmp_path / 'out.bin')
+        mock_rec = MagicMock()
+        with patch('sense_emu.tui.Recorder', return_value=mock_rec), \
+             patch.object(app, 'set_interval', return_value=MagicMock()):
+            app._on_record_path(path)
+        mock_rec.start.assert_called_once()
+
+    def test_stop_recording_stops_recorder(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        mock_recorder = MagicMock()
+        app._recorder = mock_recorder
+        app._rec_timer = None
+        mock_label = MagicMock()
+        app.query_one = MagicMock(return_value=mock_label)
+        app._stop_recording()
+        mock_recorder.stop.assert_called_once()
+
+    def test_poll_recording_updates_status(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        mock_recorder = MagicMock()
+        mock_recorder.running = True
+        mock_recorder.record_count = 42
+        app._recorder = mock_recorder
+        app._rec_timer = MagicMock()
+        mock_label = MagicMock()
+        app.query_one = MagicMock(return_value=mock_label)
+        app._poll_recording()
+        mock_label.update.assert_called()
+        status = mock_label.update.call_args[0][0]
+        assert '42' in status
+
+    def test_poll_recording_finished_stops_timer(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        mock_recorder = MagicMock()
+        mock_recorder.running = False
+        mock_recorder.record_count = 5
+        app._recorder = mock_recorder
+        mock_timer = MagicMock()
+        app._rec_timer = mock_timer
+        mock_label = MagicMock()
+        app.query_one = MagicMock(return_value=mock_label)
+        app._poll_recording()
+        mock_timer.stop.assert_called_once()
+        assert app._rec_timer is None
+
+    def test_on_unmount_stops_recorder(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        mock_recorder = MagicMock()
+        mock_recorder.running = True
+        app._recorder = mock_recorder
+        app._player = None
+        app.on_unmount()
+        mock_recorder.stop.assert_called_once()
+
 
 # ── RecordingPathScreen ───────────────────────────────────────────────────────
 

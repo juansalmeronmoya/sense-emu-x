@@ -484,6 +484,73 @@ class TestPlaybackGUI:
         assert not window._playback_bar.isVisible()
 
 
+class TestRecordingGUI:
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def test_has_rec_bar_hidden(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert not window._rec_bar.isVisible()
+
+    def test_start_recording_cancelled_dialog(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch('sense_emu.pyside_app.QFileDialog.getSaveFileName',
+                   return_value=('', '')):
+            window._start_recording()
+        assert window._recorder is None
+
+    def test_toggle_recording_starts_when_idle(self, qtbot, emulator, tmp_screen_file, tmp_path):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        path = str(tmp_path / 'rec.bin')
+        mock_rec = MagicMock()
+        with patch('sense_emu.pyside_app.Recorder', return_value=mock_rec), \
+             patch('sense_emu.pyside_app.QFileDialog.getSaveFileName',
+                   return_value=(path, '')):
+            window._toggle_recording()
+        mock_rec.start.assert_called_once()
+
+    def test_toggle_recording_stops_when_running(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        mock_rec = MagicMock()
+        mock_rec.running = True
+        window._recorder = mock_rec
+        window._toggle_recording()
+        mock_rec.stop.assert_called_once()
+
+    def test_stop_recording_hides_bar(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._rec_bar.setVisible(True)
+        mock_rec = MagicMock()
+        window._recorder = mock_rec
+        window._stop_recording()
+        assert not window._rec_bar.isVisible()
+
+    def test_poll_recording_updates_label(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        mock_rec = MagicMock()
+        mock_rec.running = True
+        mock_rec.record_count = 17
+        window._recorder = mock_rec
+        window._poll_recording()
+        assert '17' in window._rec_label.text()
+
+    def test_start_recording_blocked_during_replay(self, qtbot, emulator, tmp_screen_file, tmp_path):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        mock_player = MagicMock()
+        mock_player.running = True
+        window._player = mock_player
+        with patch('sense_emu.pyside_app.QMessageBox.warning') as mock_warn, \
+             patch('sense_emu.pyside_app.QFileDialog.getSaveFileName') as mock_dlg:
+            window._start_recording()
+        mock_warn.assert_called_once()
+        mock_dlg.assert_not_called()
+
+
 class TestSingleInstanceError:
     """GUI main() must show a friendly warning when emulator is already running."""
 
