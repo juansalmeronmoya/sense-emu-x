@@ -18,8 +18,6 @@
 
 "The Raspberry Pi Sense HAT Emulator library"
 
-import sys
-
 from .sense_hat import SenseHat, SenseHat as AstroPi
 from .stick import (
     SenseStick,
@@ -38,7 +36,7 @@ __project__      = 'sense-emu'
 __version__      = '1.2.1'
 __author__       = 'Raspberry Pi Foundation'
 __author_email__ = 'info@raspberrypi.org'
-__url__          = 'http://sense-emu.readthedocs.io/'
+__url__          = 'https://sense-emu.readthedocs.io/'
 __platforms__    = ['ALL']
 
 __classifiers__ = [
@@ -49,11 +47,13 @@ __classifiers__ = [
     'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
     'License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)',
     'Operating System :: OS Independent',
-    'Programming Language :: Python :: 2.7',
-    'Programming Language :: Python :: 3.2',
-    'Programming Language :: Python :: 3.3',
-    'Programming Language :: Python :: 3.4',
-    'Programming Language :: Python :: 3.5',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
     'Topic :: Scientific/Engineering',
     ]
 
@@ -66,23 +66,18 @@ __requires__ = [
     ]
 
 __extra_requires__ = {
-    'doc':   ['sphinx'],
-    'test':  ['pytest', 'coverage', 'mock'],
+    'doc':  ['sphinx', 'sphinx-rtd-theme'],
+    'test': ['pytest', 'pytest-cov', 'pytest-env', 'pytest-qt', 'mock', 'PySide6'],
+    'gui':  ['PySide6'],
+    'tui':  ['textual'],
     }
-
-if sys.version_info[:2] == (3, 2):
-    # Particular versions are required for Python 3.2 compatibility
-    __extra_requires__['doc'].extend([
-        'Jinja2<2.7',
-        'MarkupSafe<0.16',
-        ])
-    __extra_requires__['test'][1] = 'coverage<4.0dev'
 
 __entry_points__ = {
     'console_scripts': [
         'sense_rec = sense_emu.record:app',
         'sense_play = sense_emu.play:app',
         'sense_csv = sense_emu.dump:app',
+        'sense_emu_tui = sense_emu.tui:main',
         ],
     'gui_scripts': [
         'sense_emu_gui = sense_emu.pyside_app:main',

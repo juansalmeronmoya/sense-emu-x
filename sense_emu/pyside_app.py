@@ -6,35 +6,21 @@ from time import monotonic
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QSlider, QLabel, QGridLayout,
                                QPushButton, QScrollArea, QGroupBox, QSplitter,
-                               QFileDialog, QMessageBox)
-from PySide6.QtCore import Qt, QTimer, QMargins
+                               QFileDialog, QMessageBox, QDialog, QFormLayout,
+                               QSpinBox, QDialogButtonBox, QSizePolicy,
+                               QDoubleSpinBox, QProgressBar, QColorDialog)
+from PySide6.QtCore import Qt, QTimer, QMargins, QSize, QSettings, Signal
 from PySide6.QtGui import QPainter, QColor, QAction, QKeySequence
 from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis
 
 from .core import EmulatorController
-from .screen import screen_filename
-from .common import HEADER_REC, DATA_REC, DataRecord
+from .screen import screen_filename, ScreenWriter
+from .stick import SenseStick, STICK_KEYS, make_stick_event, rotate_key
+from .recfile import parse_recording
+from .playback import Player
+from .recorder import Recorder
 
-
-# ── Recording parser ──────────────────────────────────────────────────────────
-
-def _parse_recording(path):
-    records = []
-    with open(path, 'rb') as f:
-        header_buf = f.read(HEADER_REC.size)
-        if len(header_buf) < HEADER_REC.size:
-            raise ValueError('Invalid recording file')
-        magic, ver, _ = HEADER_REC.unpack(header_buf)
-        if magic != b'SENSEHAT' or ver != 1:
-            raise ValueError('Invalid recording file')
-        while True:
-            buf = f.read(DATA_REC.size)
-            if not buf:
-                break
-            if len(buf) < DATA_REC.size:
-                raise ValueError('Truncated record')
-            records.append(DataRecord(*DATA_REC.unpack(buf)))
-    return records
+_parse_recording = parse_recording
 
 
 # ── Chart group definitions ───────────────────────────────────────────────────
@@ -60,26 +46,99 @@ _CHART_GROUPS = [
 # ── LED Matrix ────────────────────────────────────────────────────────────────
 
 class LEDMatrixWidget(QWidget):
-    def __init__(self, screen_client=None):
+    cellPainted = Signal(int, int)
+
+    def __init__(self, screen_client=None, cell_size=40):
         super().__init__()
-        self.setMinimumSize(320, 320)
+        self._cell_size = cell_size
+        self._update_size()
         self.matrix_data = bytearray(192)
         self._screen_client = screen_client
+        self._paint_mode = False
+        self._paint_color = QColor(255, 255, 255)
+        self._rotation = 0  # degrees: 0, 90, 180, 270
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_matrix)
         self.timer.start(100)
 
+    def _update_size(self):
+        side = self._cell_size * 8
+        self.setMinimumSize(side, side)
+        self.setMaximumSize(side, side)
+
+    def set_cell_size(self, cell_size):
+        self._cell_size = max(10, int(cell_size))
+        self._update_size()
+        self.updateGeometry()
+        self.update()
+
+    def cell_size(self):
+        return self._cell_size
+
+    def hasHeightForWidth(self):
+        return True
+
+    def heightForWidth(self, width):
+        return width
+
+    def sizeHint(self):
+        side = self._cell_size * 8
+        return QSize(side, side)
+
+    def set_rotation(self, degrees):
+        self._rotation = degrees % 360
+
+    def rotation(self):
+        return self._rotation
+
     def update_matrix(self):
         if self._screen_client is None:
             return
         try:
-            # rgb_array returns (8, 8, 3) uint8 with gamma correction applied
+            import numpy as np
             rgb = self._screen_client.rgb_array
+            k = (self._rotation // 90) % 4
+            if k:
+                rgb = np.rot90(rgb, k)
             self.matrix_data = rgb.flatten().tobytes()
             self.update()
         except Exception:
             pass
+
+    def set_paint_mode(self, enabled):
+        self._paint_mode = enabled
+        self.setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+
+    def set_paint_color(self, color):
+        self._paint_color = color
+
+    def _cell_at(self, pos):
+        w, h = self.width(), self.height()
+        x, y = pos.x(), pos.y()
+        if x < 0 or y < 0 or x >= w or y >= h:
+            return None, None
+        cx = int(x / (w / 8))
+        cy = int(y / (h / 8))
+        if 0 <= cx < 8 and 0 <= cy < 8:
+            return cx, cy
+        return None, None
+
+    def mousePressEvent(self, event):
+        if self._paint_mode and event.button() == Qt.LeftButton:
+            cx, cy = self._cell_at(event.position().toPoint())
+            if cx is not None:
+                self.cellPainted.emit(cx, cy)
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._paint_mode and (event.buttons() & Qt.LeftButton):
+            cx, cy = self._cell_at(event.position().toPoint())
+            if cx is not None:
+                self.cellPainted.emit(cx, cy)
+        else:
+            super().mouseMoveEvent(event)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -102,16 +161,18 @@ class LEDMatrixWidget(QWidget):
 
 class TelemetryPanel(QWidget):
     _max_samples = 300
+    _poll_interval_ms = 200
+    _time_window_s = 60
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._hat = None
         self._t0 = 0.0
         self._series = {}
-        self._x_axes = []     # one QValueAxis per chart
-        self._y_axes = []     # one QValueAxis per chart
-        self._chart_keys = [] # list[list[str]] — series keys per chart
-        self._key_to_chart = {}  # key → chart index
+        self._x_axes = []
+        self._y_axes = []
+        self._chart_keys = []
+        self._key_to_chart = {}
 
         root = QVBoxLayout(self)
         root.setContentsMargins(2, 2, 2, 2)
@@ -142,7 +203,7 @@ class TelemetryPanel(QWidget):
             x_axis = QValueAxis()
             x_axis.setLabelsVisible(True)
             x_axis.setTitleVisible(False)
-            x_axis.setRange(0, 60)
+            x_axis.setRange(0, self._time_window_s)
             x_axis.setTickCount(4)
             chart.addAxis(x_axis, Qt.AlignBottom)
 
@@ -172,7 +233,6 @@ class TelemetryPanel(QWidget):
 
             self._chart_keys.append(keys)
 
-            # Compact header: "Title (unit)  ■ X  ■ Y  ■ Z"
             legend_parts = '&nbsp;&nbsp;'.join(
                 f'<span style="color:{c};">&#9632;</span>&nbsp;{n}'
                 for _, c, n in series_defs
@@ -207,18 +267,25 @@ class TelemetryPanel(QWidget):
 
     # ── Public API ────────────────────────────────────────────────────────────
 
+    def apply_settings(self, settings):
+        self._max_samples = settings.get('max_samples', self._max_samples)
+        self._poll_interval_ms = settings.get('poll_interval_ms', self._poll_interval_ms)
+        self._time_window_s = settings.get('time_window_s', self._time_window_s)
+        if self._timer.isActive():
+            self._timer.setInterval(self._poll_interval_ms)
+
     def set_live(self, hat, label='Emulator'):
         self._timer.stop()
         self._hat = hat
         self.clear()
         self._t0 = monotonic()
         self._status_label.setText(f'Source: {label}')
-        self._timer.start(200)
+        self._timer.start(self._poll_interval_ms)
 
     def set_recording(self, path):
         self._timer.stop()
         self._hat = None
-        records = _parse_recording(path)  # raises ValueError on bad file
+        records = _parse_recording(path)
         self.clear()
         if records:
             t0 = records[0].timestamp
@@ -249,7 +316,7 @@ class TelemetryPanel(QWidget):
         for series in self._series.values():
             series.clear()
         for x_axis in self._x_axes:
-            x_axis.setRange(0, 60)
+            x_axis.setRange(0, self._time_window_s)
         for y_axis in self._y_axes:
             y_axis.setRange(-1, 1)
 
@@ -285,12 +352,12 @@ class TelemetryPanel(QWidget):
             self._append('humidity', t, self._hat.get_humidity())
             self._append('htemp', t, self._hat.get_temperature_from_humidity())
 
-            x_min = max(0.0, t - 60.0)
-            x_max = max(x_min + 60.0, t)
+            x_min = max(0.0, t - self._time_window_s)
+            x_max = max(x_min + self._time_window_s, t)
             for x_axis in self._x_axes:
                 x_axis.setRange(x_min, x_max)
         except Exception:
-            pass  # transient read errors must not crash the timer loop
+            pass
 
     def _append(self, key, t, val):
         series = self._series[key]
@@ -311,62 +378,252 @@ class TelemetryPanel(QWidget):
         self._y_axes[chart_idx].setRange(lo - margin, hi + margin)
 
 
+# ── Preferences dialog ────────────────────────────────────────────────────────
+
+class PreferencesDialog(QDialog):
+    def __init__(self, parent=None, settings=None):
+        super().__init__(parent)
+        self.setWindowTitle("Preferences")
+        self.setMinimumWidth(360)
+
+        if settings is None:
+            settings = {}
+        self._settings = dict(settings)
+
+        layout = QVBoxLayout(self)
+
+        # ── Charts section ────────────────────────────────────────────────────
+        charts_group = QGroupBox("Charts")
+        charts_form = QFormLayout(charts_group)
+
+        self._poll_interval = QSpinBox()
+        self._poll_interval.setRange(50, 5000)
+        self._poll_interval.setSuffix(" ms")
+        self._poll_interval.setValue(settings.get('poll_interval_ms', 200))
+        charts_form.addRow("Update interval:", self._poll_interval)
+
+        self._max_samples = QSpinBox()
+        self._max_samples.setRange(10, 10000)
+        self._max_samples.setValue(settings.get('max_samples', 300))
+        charts_form.addRow("Max samples:", self._max_samples)
+
+        self._time_window = QSpinBox()
+        self._time_window.setRange(5, 600)
+        self._time_window.setSuffix(" s")
+        self._time_window.setValue(settings.get('time_window_s', 60))
+        charts_form.addRow("Time window:", self._time_window)
+
+        layout.addWidget(charts_group)
+
+        # ── LED Matrix section ────────────────────────────────────────────────
+        matrix_group = QGroupBox("LED Matrix")
+        matrix_form = QFormLayout(matrix_group)
+
+        self._cell_size = QSpinBox()
+        self._cell_size.setRange(10, 80)
+        self._cell_size.setSuffix(" px/cell")
+        self._cell_size.setValue(settings.get('cell_size', 40))
+        matrix_form.addRow("Cell size:", self._cell_size)
+
+        layout.addWidget(matrix_group)
+
+        # ── Emulator section ──────────────────────────────────────────────────
+        emu_group = QGroupBox("Emulator")
+        emu_form = QFormLayout(emu_group)
+
+        self._led_refresh = QSpinBox()
+        self._led_refresh.setRange(50, 2000)
+        self._led_refresh.setSuffix(" ms")
+        self._led_refresh.setValue(settings.get('led_refresh_ms', 100))
+        emu_form.addRow("LED refresh interval:", self._led_refresh)
+
+        layout.addWidget(emu_group)
+
+        # ── Buttons ───────────────────────────────────────────────────────────
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_settings(self):
+        return {
+            'poll_interval_ms': self._poll_interval.value(),
+            'max_samples': self._max_samples.value(),
+            'time_window_s': self._time_window.value(),
+            'cell_size': self._cell_size.value(),
+            'led_refresh_ms': self._led_refresh.value(),
+        }
+
+
 # ── Main window ───────────────────────────────────────────────────────────────
 
 class SenseEmuDesktop(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Sense HAT Emulator")
-        self.setGeometry(100, 100, 1200, 750)
+        self.setGeometry(100, 100, 1200, 800)
         self.controller = EmulatorController()
+
+        self._qsettings = QSettings(QSettings.IniFormat, QSettings.UserScope,
+                                    'sense-emu', 'sense-emu-gui')
+        self._settings = {
+            'poll_interval_ms': self._qsettings.value('poll_interval_ms', 200, type=int),
+            'max_samples':      self._qsettings.value('max_samples', 300, type=int),
+            'time_window_s':    self._qsettings.value('time_window_s', 60, type=int),
+            'cell_size':        self._qsettings.value('cell_size', 40, type=int),
+            'led_refresh_ms':   self._qsettings.value('led_refresh_ms', 100, type=int),
+            'rotation':         self._qsettings.value('rotation', 0, type=int),
+        }
+        self._hat_rotation = self._settings['rotation']
 
         # ── Top section ───────────────────────────────────────────────────────
         top_widget = QWidget()
         top_layout = QHBoxLayout(top_widget)
+        top_layout.setSpacing(8)
 
-        # Left: LED Matrix
-        self.matrix = LEDMatrixWidget(self.controller.screen)
-        top_layout.addWidget(self.matrix, 1)
+        # Left: LED Matrix in a GroupBox
+        matrix_group = QGroupBox("LED Matrix (8×8)")
+        matrix_vbox = QVBoxLayout(matrix_group)
+        matrix_vbox.setAlignment(Qt.AlignHCenter)
+
+        self.matrix = LEDMatrixWidget(
+            self.controller.screen,
+            cell_size=self._settings['cell_size'],
+        )
+        self.matrix.set_rotation(self._hat_rotation)
+        self.matrix.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        matrix_vbox.addWidget(self.matrix, 0, Qt.AlignHCenter)
+
+        # Cell size + rotation controls below the matrix
+        size_row = QHBoxLayout()
+        size_row.addWidget(QLabel("Size:"))
+        self._matrix_size_spin = QSpinBox()
+        self._matrix_size_spin.setRange(10, 80)
+        self._matrix_size_spin.setSuffix(" px")
+        self._matrix_size_spin.setValue(self._settings['cell_size'])
+        self._matrix_size_spin.valueChanged.connect(self._on_matrix_size_changed)
+        size_row.addWidget(self._matrix_size_spin)
+        rot_ccw_btn = QPushButton("↶")
+        rot_ccw_btn.setFixedSize(28, 26)
+        rot_ccw_btn.setToolTip("Rotate 90° counter-clockwise")
+        rot_ccw_btn.clicked.connect(self._rotate_ccw)
+        rot_cw_btn = QPushButton("↷")
+        rot_cw_btn.setFixedSize(28, 26)
+        rot_cw_btn.setToolTip("Rotate 90° clockwise")
+        rot_cw_btn.clicked.connect(self._rotate_cw)
+        size_row.addWidget(rot_ccw_btn)
+        size_row.addWidget(rot_cw_btn)
+        size_row.addStretch()
+        matrix_vbox.addLayout(size_row)
+
+        # Paint controls
+        paint_row = QHBoxLayout()
+        self._paint_toggle = QPushButton("Paint")
+        self._paint_toggle.setCheckable(True)
+        self._paint_toggle.setFixedWidth(52)
+        self._paint_toggle.toggled.connect(self._on_paint_toggled)
+        paint_row.addWidget(self._paint_toggle)
+        self._paint_color_btn = QPushButton()
+        self._paint_color_btn.setFixedSize(26, 26)
+        self._paint_color_btn.setStyleSheet(
+            "background-color: white; border: 1px solid #888;")
+        self._paint_color_btn.clicked.connect(self._pick_paint_color)
+        self._paint_color = QColor(255, 255, 255)
+        paint_row.addWidget(self._paint_color_btn)
+        clear_btn = QPushButton("Clear")
+        clear_btn.setFixedWidth(48)
+        clear_btn.clicked.connect(self._clear_matrix)
+        paint_row.addWidget(clear_btn)
+        paint_row.addStretch()
+        matrix_vbox.addLayout(paint_row)
+
+        self.matrix.cellPainted.connect(self._on_cell_painted)
+        self._screen_writer = None
+
+        top_layout.addWidget(matrix_group, 0)
 
         # Right: scrollable controls
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         controls_container = QWidget()
         controls_layout = QVBoxLayout(controls_container)
-        controls_layout.setSpacing(10)
+        controls_layout.setSpacing(8)
 
         self.sliders = {}
 
-        def create_slider_in_group(layout, name, min_val, max_val, default):
-            lbl = QLabel(f"{name}: {default}")
+        def create_slider_row(layout, name, min_val, max_val, default):
+            row = QHBoxLayout()
+            lbl = QLabel(f"{name}:")
+            lbl.setFixedWidth(90)
+            val_lbl = QLabel(str(default))
+            val_lbl.setFixedWidth(40)
             slider = QSlider(Qt.Horizontal)
             slider.setRange(min_val, max_val)
             slider.setValue(default)
 
             def on_change(val):
-                lbl.setText(f"{name}: {val}")
+                val_lbl.setText(str(val))
                 self.update_sensors()
 
             slider.valueChanged.connect(on_change)
             self.sliders[name] = slider
-            layout.addWidget(lbl)
-            layout.addWidget(slider)
+            row.addWidget(lbl)
+            row.addWidget(slider)
+            row.addWidget(val_lbl)
+            layout.addLayout(row)
 
-        # IMU
+        # IMU group
         imu_group = QGroupBox("IMU (Orientation)")
         imu_layout = QVBoxLayout(imu_group)
-        create_slider_in_group(imu_layout, "Pitch", -180, 180, 0)
-        create_slider_in_group(imu_layout, "Roll", -180, 180, 0)
-        create_slider_in_group(imu_layout, "Yaw", 0, 360, 0)
+        create_slider_row(imu_layout, "Pitch", -180, 180, 0)
+        create_slider_row(imu_layout, "Roll", -180, 180, 0)
+        create_slider_row(imu_layout, "Yaw", 0, 360, 0)
         controls_layout.addWidget(imu_group)
 
-        # Environmental Sensors
+        # Environmental sensors + Joystick on the same row
+        env_joy_row = QHBoxLayout()
+        env_joy_row.setSpacing(8)
+
         env_group = QGroupBox("Environmental Sensors")
         env_layout = QVBoxLayout(env_group)
-        create_slider_in_group(env_layout, "Temperature", -40, 120, 20)
-        create_slider_in_group(env_layout, "Pressure", 260, 1260, 1013)
-        create_slider_in_group(env_layout, "Humidity", 0, 100, 45)
-        controls_layout.addWidget(env_group)
+        create_slider_row(env_layout, "Temperature", -40, 120, 20)
+        create_slider_row(env_layout, "Pressure", 260, 1260, 1013)
+        create_slider_row(env_layout, "Humidity", 0, 100, 45)
+        env_joy_row.addWidget(env_group, 2)
+
+        joy_group = QGroupBox("Joystick")
+        joy_layout = QGridLayout(joy_group)
+        joy_layout.setSpacing(4)
+        up_btn    = QPushButton("↑")
+        down_btn  = QPushButton("↓")
+        left_btn  = QPushButton("←")
+        right_btn = QPushButton("→")
+        mid_btn   = QPushButton("OK")
+        for btn in (up_btn, down_btn, left_btn, right_btn, mid_btn):
+            btn.setFixedSize(42, 32)
+            btn.setAutoRepeat(False)
+        up_btn.pressed.connect(lambda:    self._stick_pressed("UP"))
+        down_btn.pressed.connect(lambda:  self._stick_pressed("DOWN"))
+        left_btn.pressed.connect(lambda:  self._stick_pressed("LEFT"))
+        right_btn.pressed.connect(lambda: self._stick_pressed("RIGHT"))
+        mid_btn.pressed.connect(lambda:   self._stick_pressed("MIDDLE"))
+        up_btn.released.connect(lambda:    self._stick_released("UP"))
+        down_btn.released.connect(lambda:  self._stick_released("DOWN"))
+        left_btn.released.connect(lambda:  self._stick_released("LEFT"))
+        right_btn.released.connect(lambda: self._stick_released("RIGHT"))
+        mid_btn.released.connect(lambda:   self._stick_released("MIDDLE"))
+
+        self._hold_timer = QTimer(self)
+        self._hold_timer.timeout.connect(self._send_hold)
+        self._hold_direction = None
+        joy_layout.addWidget(up_btn,    0, 1)
+        joy_layout.addWidget(left_btn,  1, 0)
+        joy_layout.addWidget(mid_btn,   1, 1)
+        joy_layout.addWidget(right_btn, 1, 2)
+        joy_layout.addWidget(down_btn,  2, 1)
+        env_joy_row.addWidget(joy_group, 1)
+
+        controls_layout.addLayout(env_joy_row)
 
         # Telemetry source selector
         source_group = QGroupBox("Telemetry source")
@@ -388,25 +645,6 @@ class SenseEmuDesktop(QMainWindow):
         self._btn_rec.clicked.connect(self._open_recording)
         controls_layout.addWidget(source_group)
 
-        # Joystick
-        joy_group = QGroupBox("Joystick")
-        joy_layout = QGridLayout(joy_group)
-        up_btn    = QPushButton("↑ UP")
-        down_btn  = QPushButton("↓ DOWN")
-        left_btn  = QPushButton("← LEFT")
-        right_btn = QPushButton("RIGHT →")
-        mid_btn   = QPushButton("ENTER")
-        up_btn.clicked.connect(lambda:    self._on_stick_press("UP"))
-        down_btn.clicked.connect(lambda:  self._on_stick_press("DOWN"))
-        left_btn.clicked.connect(lambda:  self._on_stick_press("LEFT"))
-        right_btn.clicked.connect(lambda: self._on_stick_press("RIGHT"))
-        mid_btn.clicked.connect(lambda:   self._on_stick_press("MIDDLE"))
-        joy_layout.addWidget(up_btn,    0, 1)
-        joy_layout.addWidget(left_btn,  1, 0)
-        joy_layout.addWidget(mid_btn,   1, 1)
-        joy_layout.addWidget(right_btn, 1, 2)
-        joy_layout.addWidget(down_btn,  2, 1)
-        controls_layout.addWidget(joy_group)
         controls_layout.addStretch()
 
         scroll.setWidget(controls_container)
@@ -416,14 +654,64 @@ class SenseEmuDesktop(QMainWindow):
         self.telemetry = TelemetryPanel()
 
         # ── Splitter ──────────────────────────────────────────────────────────
-        splitter = QSplitter(Qt.Vertical)
-        splitter.addWidget(top_widget)
-        splitter.addWidget(self.telemetry)
-        splitter.setSizes([420, 280])
+        self._splitter = QSplitter(Qt.Vertical)
+        self._splitter.addWidget(top_widget)
+        self._splitter.addWidget(self.telemetry)
+        self._splitter.setCollapsible(0, False)
+        self._splitter.setCollapsible(1, False)
+        self._splitter.setStretchFactor(0, 1)
+        self._splitter.setStretchFactor(1, 1)
+        self._splitter.setSizes([420, 330])
+
+        # ── Playback status bar ───────────────────────────────────────────────
+        self._playback_bar = QWidget()
+        pb_layout = QHBoxLayout(self._playback_bar)
+        pb_layout.setContentsMargins(4, 2, 4, 2)
+        self._playback_progress = QProgressBar()
+        self._playback_progress.setRange(0, 100)
+        self._playback_progress.setValue(0)
+        self._playback_stop_btn = QPushButton("Stop")
+        self._playback_stop_btn.clicked.connect(self._stop_playback)
+        self._playback_label = QLabel("Playing recording…")
+        pb_layout.addWidget(self._playback_label)
+        pb_layout.addWidget(self._playback_progress, 1)
+        pb_layout.addWidget(self._playback_stop_btn)
+        self._playback_bar.setVisible(False)
+
+        self._player = None
+        self._playback_poll = QTimer(self)
+        self._playback_poll.setInterval(200)
+        self._playback_poll.timeout.connect(self._poll_playback)
+
+        # ── Recording status bar ──────────────────────────────────────────────
+        self._rec_bar = QWidget()
+        rec_layout = QHBoxLayout(self._rec_bar)
+        rec_layout.setContentsMargins(4, 2, 4, 2)
+        self._rec_label = QLabel("● REC  0 records")
+        self._rec_label.setStyleSheet("color: red; font-weight: bold;")
+        self._rec_stop_btn = QPushButton("Stop recording")
+        self._rec_stop_btn.clicked.connect(self._stop_recording)
+        rec_layout.addWidget(self._rec_label, 1)
+        rec_layout.addWidget(self._rec_stop_btn)
+        self._rec_bar.setVisible(False)
+        self._recorder = None
+        self._rec_poll = QTimer(self)
+        self._rec_poll.setInterval(200)
+        self._rec_poll.timeout.connect(self._poll_recording)
 
         main_widget = QWidget()
-        QVBoxLayout(main_widget).addWidget(splitter)
+        main_layout = QVBoxLayout(main_widget)
+        main_layout.addWidget(self._splitter)
+        main_layout.addWidget(self._playback_bar)
+        main_layout.addWidget(self._rec_bar)
         self.setCentralWidget(main_widget)
+
+        geom = self._qsettings.value('geometry')
+        if geom is not None:
+            self.restoreGeometry(geom)
+        splitter_state = self._qsettings.value('splitter_state')
+        if splitter_state is not None:
+            self._splitter.restoreState(splitter_state)
 
         self._build_menu()
 
@@ -438,11 +726,23 @@ class SenseEmuDesktop(QMainWindow):
         # File
         file_menu = mb.addMenu("&File")
 
-        act_open = QAction("&Open trace…", self)
+        act_open = QAction("&View trace in charts…", self)
         act_open.setShortcut(QKeySequence("Ctrl+O"))
-        act_open.setStatusTip("Open a recorded trace file (.bin)")
+        act_open.setStatusTip("Load a recording into the telemetry charts")
         act_open.triggered.connect(self._open_recording)
         file_menu.addAction(act_open)
+
+        act_replay = QAction("&Replay recording…", self)
+        act_replay.setShortcut(QKeySequence("Ctrl+R"))
+        act_replay.setStatusTip("Replay a recording into the emulator")
+        act_replay.triggered.connect(self._start_playback)
+        file_menu.addAction(act_replay)
+
+        self._act_record = QAction("&Start recording…", self)
+        self._act_record.setShortcut(QKeySequence("Ctrl+Shift+R"))
+        self._act_record.setStatusTip("Record emulator output to a file")
+        self._act_record.triggered.connect(self._toggle_recording)
+        file_menu.addAction(self._act_record)
 
         file_menu.addSeparator()
 
@@ -462,10 +762,11 @@ class SenseEmuDesktop(QMainWindow):
         self._act_telemetry.toggled.connect(self._toggle_telemetry)
         view_menu.addAction(self._act_telemetry)
 
-        # Settings (stub)
+        # Settings
         settings_menu = mb.addMenu("&Settings")
-        act_prefs = QAction("Preferences…", self)
-        act_prefs.setEnabled(False)
+        act_prefs = QAction("&Preferences…", self)
+        act_prefs.setShortcut(QKeySequence("Ctrl+,"))
+        act_prefs.triggered.connect(self._open_preferences)
         settings_menu.addAction(act_prefs)
 
         # Help
@@ -489,6 +790,78 @@ class SenseEmuDesktop(QMainWindow):
             f'<small>PySide6 {pyside_ver} &nbsp;·&nbsp; '
             f'Python {sys.version.split()[0]}</small>',
         )
+
+    def _save_settings(self):
+        for key, val in self._settings.items():
+            self._qsettings.setValue(key, val)
+        self._qsettings.setValue('geometry', self.saveGeometry())
+        self._qsettings.setValue('splitter_state', self._splitter.saveState())
+        self._qsettings.sync()
+
+    def _open_preferences(self):
+        dlg = PreferencesDialog(self, settings=self._settings)
+        if dlg.exec() == QDialog.Accepted:
+            new_settings = dlg.get_settings()
+            self._settings.update(new_settings)
+            self._apply_settings()
+            self._save_settings()
+
+    def _apply_settings(self):
+        self.telemetry.apply_settings(self._settings)
+        cell_size = self._settings.get('cell_size', 40)
+        self.matrix.set_cell_size(cell_size)
+        self._matrix_size_spin.blockSignals(True)
+        self._matrix_size_spin.setValue(cell_size)
+        self._matrix_size_spin.blockSignals(False)
+        led_refresh = self._settings.get('led_refresh_ms', 100)
+        self.matrix.timer.setInterval(led_refresh)
+
+    def _on_matrix_size_changed(self, value):
+        self._settings['cell_size'] = value
+        self.matrix.set_cell_size(value)
+        self._qsettings.setValue('cell_size', value)
+        self._qsettings.sync()
+
+    # ── Rotation ──────────────────────────────────────────────────────────────
+
+    def _rotate_ccw(self):
+        self._hat_rotation = (self._hat_rotation - 90) % 360
+        self.matrix.set_rotation(self._hat_rotation)
+        self._settings['rotation'] = self._hat_rotation
+        self._qsettings.setValue('rotation', self._hat_rotation)
+        self._qsettings.sync()
+
+    def _rotate_cw(self):
+        self._hat_rotation = (self._hat_rotation + 90) % 360
+        self.matrix.set_rotation(self._hat_rotation)
+        self._settings['rotation'] = self._hat_rotation
+        self._qsettings.setValue('rotation', self._hat_rotation)
+        self._qsettings.sync()
+
+    # ── Paint mode ────────────────────────────────────────────────────────────
+
+    def _on_paint_toggled(self, checked):
+        self.matrix.set_paint_mode(checked)
+
+    def _pick_paint_color(self):
+        color = QColorDialog.getColor(self._paint_color, self, "Pick paint color")
+        if color.isValid():
+            self._paint_color = color
+            self.matrix.set_paint_color(color)
+            self._paint_color_btn.setStyleSheet(
+                f"background-color: {color.name()}; border: 1px solid #888;")
+
+    def _on_cell_painted(self, cx, cy):
+        if self._screen_writer is None:
+            self._screen_writer = ScreenWriter()
+        r, g, b = (self._paint_color.red(), self._paint_color.green(),
+                   self._paint_color.blue())
+        self._screen_writer.set_pixel(cx, cy, r, g, b)
+
+    def _clear_matrix(self):
+        if self._screen_writer is None:
+            self._screen_writer = ScreenWriter()
+        self._screen_writer.clear()
 
     # ── Source actions ────────────────────────────────────────────────────────
 
@@ -514,10 +887,118 @@ class SenseEmuDesktop(QMainWindow):
             except ValueError as e:
                 QMessageBox.critical(self, 'Error opening recording', str(e))
 
+    # ── Playback ──────────────────────────────────────────────────────────────
+
+    def _start_playback(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, 'Replay recording', '',
+            'Recordings (*.bin);;All files (*)')
+        if not path:
+            return
+        if self._player and self._player.running:
+            self._player.stop()
+        self._player = Player(
+            self.controller.imu,
+            self.controller.pressure,
+            self.controller.humidity,
+        )
+        try:
+            self._player.play(path)
+        except (ValueError, OSError) as e:
+            QMessageBox.critical(self, 'Error replaying recording', str(e))
+            return
+        if self._player.total == 0:
+            QMessageBox.information(self, 'Replay', 'Recording contains no data.')
+            return
+        self._playback_bar.setVisible(True)
+        self._playback_poll.start()
+
+    def _stop_playback(self):
+        if self._player:
+            self._player.stop()
+        self._playback_poll.stop()
+        self._playback_bar.setVisible(False)
+
+    def _poll_playback(self):
+        if self._player is None:
+            return
+        pct = int(self._player.progress * 100)
+        self._playback_progress.setValue(pct)
+        if not self._player.running:
+            self._playback_poll.stop()
+            self._playback_bar.setVisible(False)
+
+    # ── Recording ─────────────────────────────────────────────────────────────
+
+    def _toggle_recording(self):
+        if self._recorder and self._recorder.running:
+            self._stop_recording()
+        else:
+            self._start_recording()
+
+    def _start_recording(self):
+        if self._player and self._player.running:
+            QMessageBox.warning(self, 'Cannot record',
+                                'Stop the active replay before recording.')
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, 'Save recording', '',
+            'Recordings (*.bin);;All files (*)')
+        if not path:
+            return
+        self._recorder = Recorder(path)
+        self._recorder.start()
+        self._rec_bar.setVisible(True)
+        self._rec_poll.start()
+        self._act_record.setText("&Stop recording")
+
+    def _stop_recording(self):
+        if self._recorder:
+            self._recorder.stop()
+        self._rec_poll.stop()
+        self._rec_bar.setVisible(False)
+        self._act_record.setText("&Start recording…")
+
+    def _poll_recording(self):
+        if self._recorder is None:
+            return
+        n = self._recorder.record_count
+        self._rec_label.setText(f"● REC  {n} records")
+        if not self._recorder.running:
+            self._rec_poll.stop()
+            self._rec_bar.setVisible(False)
+            self._act_record.setText("&Start recording…")
+
     # ── Sensor control ────────────────────────────────────────────────────────
 
+    def _rotated_key(self, direction):
+        raw = STICK_KEYS[direction.lower()]
+        return rotate_key(raw, self._hat_rotation)
+
     def _on_stick_press(self, direction):
-        print(f"Joystick {direction} pressed")
+        """Click-style press+release (used by keyboard events without hold)."""
+        key = self._rotated_key(direction)
+        self.controller.stick.send(make_stick_event(key, SenseStick.STATE_PRESS))
+        self.controller.stick.send(make_stick_event(key, SenseStick.STATE_RELEASE))
+
+    def _stick_pressed(self, direction):
+        key = self._rotated_key(direction)
+        self.controller.stick.send(make_stick_event(key, SenseStick.STATE_PRESS))
+        self._hold_direction = direction
+        self._hold_timer.start(250)
+
+    def _stick_released(self, direction):
+        self._hold_timer.stop()
+        self._hold_direction = None
+        key = self._rotated_key(direction)
+        self.controller.stick.send(make_stick_event(key, SenseStick.STATE_RELEASE))
+
+    def _send_hold(self):
+        if self._hold_direction is None:
+            return
+        key = self._rotated_key(self._hold_direction)
+        self.controller.stick.send(make_stick_event(key, SenseStick.STATE_HOLD))
+        self._hold_timer.setInterval(100)
 
     def update_sensors(self):
         pitch    = self.sliders["Pitch"].value()
@@ -532,7 +1013,52 @@ class SenseEmuDesktop(QMainWindow):
         humidity = self.sliders["Humidity"].value()
         self.controller.humidity.set_values(humidity, temp)
 
+    def keyPressEvent(self, event):
+        _arrow_map = {
+            Qt.Key_Up:     "UP",
+            Qt.Key_Down:   "DOWN",
+            Qt.Key_Left:   "LEFT",
+            Qt.Key_Right:  "RIGHT",
+            Qt.Key_Return: "MIDDLE",
+            Qt.Key_Enter:  "MIDDLE",
+        }
+        direction = _arrow_map.get(event.key())
+        if direction is not None:
+            key = self._rotated_key(direction)
+            if event.isAutoRepeat():
+                self.controller.stick.send(make_stick_event(key, SenseStick.STATE_HOLD))
+            else:
+                self.controller.stick.send(make_stick_event(key, SenseStick.STATE_PRESS))
+            event.accept()
+        else:
+            super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        _arrow_map = {
+            Qt.Key_Up:     "UP",
+            Qt.Key_Down:   "DOWN",
+            Qt.Key_Left:   "LEFT",
+            Qt.Key_Right:  "RIGHT",
+            Qt.Key_Return: "MIDDLE",
+            Qt.Key_Enter:  "MIDDLE",
+        }
+        direction = _arrow_map.get(event.key())
+        if direction is not None and not event.isAutoRepeat():
+            key = self._rotated_key(direction)
+            self.controller.stick.send(make_stick_event(key, SenseStick.STATE_RELEASE))
+            event.accept()
+        else:
+            super().keyReleaseEvent(event)
+
     def closeEvent(self, event):
+        self._save_settings()
+        if self._player and self._player.running:
+            self._player.stop()
+        if self._recorder and self._recorder.running:
+            self._recorder.stop()
+        if self._screen_writer is not None:
+            self._screen_writer.close()
+            self._screen_writer = None
         self.telemetry._timer.stop()
         self.controller.close()
         super().closeEvent(event)
@@ -542,14 +1068,21 @@ def main():
     app = QApplication(sys.argv)
     try:
         window = SenseEmuDesktop()
-        window.show()
-        sys.exit(app.exec())
-    except Exception as e:
+    except RuntimeError as e:
+        QMessageBox.warning(
+            None, 'Sense HAT Emulator — Already running',
+            'Another instance of the Sense HAT emulator is already running.\n\n'
+            'Please close it before starting a new one.')
+        sys.exit(1)
+    except Exception:
         import traceback
         QMessageBox.critical(
             None, 'Sense HAT Emulator — Error',
             f'Could not start the emulator:\n\n{traceback.format_exc()}')
         sys.exit(1)
+    else:
+        window.show()
+        sys.exit(app.exec())
 
 
 if __name__ == "__main__":

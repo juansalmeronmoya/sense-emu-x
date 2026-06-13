@@ -147,3 +147,31 @@ class ScreenClient:
     @property
     def timestamp(self):
         return os.fstat(self._fd.fileno()).st_mtime
+
+
+class ScreenWriter:
+    """Write individual pixels or clear the screen file directly."""
+
+    def __init__(self):
+        self._fd = init_screen()
+
+    @staticmethod
+    def _rgb565(r, g, b):
+        return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+
+    def set_pixel(self, x, y, r, g, b):
+        offset = (y * 8 + x) * 2
+        value = self._rgb565(r, g, b)
+        self._fd.seek(offset)
+        self._fd.write(struct.pack('<H', value))
+
+    def clear(self, r=0, g=0, b=0):
+        value = self._rgb565(r, g, b)
+        packed = struct.pack('<H', value)
+        self._fd.seek(0)
+        self._fd.write(packed * 64)
+
+    def close(self):
+        if self._fd:
+            self._fd.close()
+            self._fd = None

@@ -8,8 +8,76 @@ from sense_emu.stick import (
     InputEvent, SenseStick, StickServer,
     DIRECTION_UP, DIRECTION_DOWN, DIRECTION_LEFT, DIRECTION_RIGHT, DIRECTION_MIDDLE,
     ACTION_PRESSED, ACTION_RELEASED, ACTION_HELD,
-    stick_address,
+    stick_address, STICK_KEYS, make_stick_event, rotate_key,
 )
+
+
+class TestStickKeys:
+    def test_all_directions_mapped(self):
+        assert STICK_KEYS['up']     == SenseStick.KEY_UP
+        assert STICK_KEYS['down']   == SenseStick.KEY_DOWN
+        assert STICK_KEYS['left']   == SenseStick.KEY_LEFT
+        assert STICK_KEYS['right']  == SenseStick.KEY_RIGHT
+        assert STICK_KEYS['middle'] == SenseStick.KEY_ENTER
+
+
+class TestMakeStickEvent:
+    def test_returns_bytes_of_event_size(self):
+        buf = make_stick_event(SenseStick.KEY_UP, SenseStick.STATE_PRESS)
+        assert isinstance(buf, bytes)
+        assert len(buf) == SenseStick.EVENT_SIZE
+
+    def test_encodes_key_and_state(self):
+        buf = make_stick_event(SenseStick.KEY_DOWN, SenseStick.STATE_HOLD)
+        tv_sec, tv_usec, ev_type, code, value = struct.unpack(
+            SenseStick.EVENT_FORMAT, buf)
+        assert ev_type == SenseStick.EV_KEY
+        assert code == SenseStick.KEY_DOWN
+        assert value == SenseStick.STATE_HOLD
+
+    def test_explicit_timestamp(self):
+        buf = make_stick_event(SenseStick.KEY_ENTER, SenseStick.STATE_RELEASE,
+                               when=12.5)
+        tv_sec, tv_usec, _, _, _ = struct.unpack(SenseStick.EVENT_FORMAT, buf)
+        assert tv_sec == 12
+        assert tv_usec == 500_000
+
+    def test_default_timestamp_is_now(self):
+        before = time.time()
+        buf = make_stick_event(SenseStick.KEY_UP, SenseStick.STATE_PRESS)
+        after = time.time()
+        tv_sec, tv_usec, _, _, _ = struct.unpack(SenseStick.EVENT_FORMAT, buf)
+        ts = tv_sec + tv_usec / 1_000_000
+        assert before - 1 <= ts <= after + 1
+
+
+class TestRotateKey:
+    def test_zero_rotation_is_identity(self):
+        for key in (SenseStick.KEY_UP, SenseStick.KEY_DOWN,
+                    SenseStick.KEY_LEFT, SenseStick.KEY_RIGHT,
+                    SenseStick.KEY_ENTER):
+            assert rotate_key(key, 0) == key
+
+    def test_90_clockwise(self):
+        assert rotate_key(SenseStick.KEY_UP, 90)    == SenseStick.KEY_RIGHT
+        assert rotate_key(SenseStick.KEY_RIGHT, 90) == SenseStick.KEY_DOWN
+        assert rotate_key(SenseStick.KEY_DOWN, 90)  == SenseStick.KEY_LEFT
+        assert rotate_key(SenseStick.KEY_LEFT, 90)  == SenseStick.KEY_UP
+
+    def test_180(self):
+        assert rotate_key(SenseStick.KEY_UP, 180)   == SenseStick.KEY_DOWN
+        assert rotate_key(SenseStick.KEY_LEFT, 180) == SenseStick.KEY_RIGHT
+
+    def test_270(self):
+        assert rotate_key(SenseStick.KEY_UP, 270)   == SenseStick.KEY_LEFT
+        assert rotate_key(SenseStick.KEY_DOWN, 270) == SenseStick.KEY_RIGHT
+
+    def test_360_wraps(self):
+        assert rotate_key(SenseStick.KEY_UP, 360) == SenseStick.KEY_UP
+
+    def test_enter_unaffected(self):
+        for rot in (0, 90, 180, 270):
+            assert rotate_key(SenseStick.KEY_ENTER, rot) == SenseStick.KEY_ENTER
 
 
 class TestConstants:

@@ -3,6 +3,7 @@ import time
 import pytest
 from unittest.mock import patch, MagicMock
 from sense_emu.play import PlayApplication
+from sense_emu.lock import _LOCK_MAGIC
 from sense_emu.common import HEADER_REC, DATA_REC
 
 
@@ -78,7 +79,7 @@ class TestPlayMain:
         # Write someone else's PID as lock holder
         import os
         with open(tmp_lock_file, 'w') as f:
-            f.write('%d\n' % os.getpid())
+            f.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))
         # Second acquire attempt should fail
         from sense_emu.lock import EmulatorLock
         lock = EmulatorLock('sense_play')

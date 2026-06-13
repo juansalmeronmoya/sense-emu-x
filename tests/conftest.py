@@ -97,7 +97,9 @@ def tmp_stick_addr(tmp_path):
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def emulator(tmp_path):
+def emulator_patches(tmp_path):
+    """Apply all temp-file/socket patches for the emulator without constructing
+    an EmulatorController. Lets tests build (or fail to build) their own."""
     pressure_path = _make_temp_file(tmp_path, 'pressure', PRESSURE_DATA.size)
     humidity_path = _make_temp_file(tmp_path, 'humidity', HUMIDITY_DATA.size)
     imu_path      = _make_temp_file(tmp_path, 'imu', IMU_DATA.size)
@@ -118,14 +120,17 @@ def emulator(tmp_path):
     ]
     for p in patches:
         p.start()
+    yield
+    for p in patches:
+        p.stop()
 
+
+@pytest.fixture
+def emulator(emulator_patches):
     from sense_emu.core import EmulatorController
     ctl = EmulatorController(simulate_imu=False, simulate_env=False)
     yield ctl
-
     ctl.close()
-    for p in patches:
-        p.stop()
 
 
 # ---------------------------------------------------------------------------

@@ -5,10 +5,20 @@ from unittest.mock import patch, MagicMock
 
 pytest.importorskip('PySide6')
 
+from PySide6.QtCore import Qt
+
 
 @pytest.fixture(autouse=True)
 def patch_screen(tmp_screen_file):
     """Redirect all screen file access to the temp file."""
+    yield
+
+
+@pytest.fixture(autouse=True)
+def isolate_qsettings(tmp_path):
+    """Redirect QSettings writes to tmp_path so tests never touch real user config."""
+    from PySide6.QtCore import QSettings
+    QSettings.setPath(QSettings.IniFormat, QSettings.UserScope, str(tmp_path))
     yield
 
 
@@ -50,7 +60,6 @@ class TestLEDMatrixWidget:
         from sense_emu.pyside_app import LEDMatrixWidget
         widget = LEDMatrixWidget()
         qtbot.addWidget(widget)
-        # Write 192 non-zero bytes
         with open(tmp_screen_file, 'r+b') as f:
             f.seek(0)
             f.write(bytes(range(192)))
@@ -59,7 +68,6 @@ class TestLEDMatrixWidget:
 
     def test_update_matrix_with_full_192_bytes(self, qtbot, tmp_screen_file):
         from sense_emu.pyside_app import LEDMatrixWidget
-        # Extend the screen file to exactly 192 bytes
         with open(tmp_screen_file, 'r+b') as f:
             f.write(b'\x00' * 192)
         widget = LEDMatrixWidget()
@@ -108,6 +116,118 @@ class TestLEDMatrixWidget:
             widget.timer.stop()
             event = QPaintEvent(QRect(0, 0, 320, 320))
             widget.paintEvent(event)
+
+    def test_has_height_for_width(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        widget = LEDMatrixWidget()
+        qtbot.addWidget(widget)
+        assert widget.hasHeightForWidth() is True
+
+    def test_height_for_width_returns_width(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        widget = LEDMatrixWidget()
+        qtbot.addWidget(widget)
+        assert widget.heightForWidth(200) == 200
+        assert widget.heightForWidth(400) == 400
+
+    def test_set_cell_size_updates_minimum(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        widget = LEDMatrixWidget()
+        qtbot.addWidget(widget)
+        widget.set_cell_size(20)
+        assert widget.minimumWidth() == 160
+        assert widget.minimumHeight() == 160
+
+    def test_set_cell_size_clamps_minimum(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        widget = LEDMatrixWidget()
+        qtbot.addWidget(widget)
+        widget.set_cell_size(1)  # below minimum
+        assert widget.cell_size() == 10
+
+    def test_custom_cell_size_at_init(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        widget = LEDMatrixWidget(cell_size=30)
+        qtbot.addWidget(widget)
+        assert widget.minimumWidth() == 240
+        assert widget.minimumHeight() == 240
+
+    def test_size_hint_is_square(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import LEDMatrixWidget
+        widget = LEDMatrixWidget(cell_size=40)
+        qtbot.addWidget(widget)
+        hint = widget.sizeHint()
+        assert hint.width() == hint.height() == 320
+
+
+class TestPreferencesDialog:
+    def test_init_creates_dialog(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        dlg = PreferencesDialog()
+        qtbot.addWidget(dlg)
+        assert dlg is not None
+
+    def test_default_settings(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        dlg = PreferencesDialog()
+        qtbot.addWidget(dlg)
+        s = dlg.get_settings()
+        assert s['poll_interval_ms'] == 200
+        assert s['max_samples'] == 300
+        assert s['time_window_s'] == 60
+        assert s['cell_size'] == 40
+        assert s['led_refresh_ms'] == 100
+
+    def test_custom_settings_applied(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        settings = {
+            'poll_interval_ms': 500,
+            'max_samples': 150,
+            'time_window_s': 30,
+            'cell_size': 25,
+            'led_refresh_ms': 200,
+        }
+        dlg = PreferencesDialog(settings=settings)
+        qtbot.addWidget(dlg)
+        s = dlg.get_settings()
+        assert s['poll_interval_ms'] == 500
+        assert s['max_samples'] == 150
+        assert s['time_window_s'] == 30
+        assert s['cell_size'] == 25
+        assert s['led_refresh_ms'] == 200
+
+    def test_get_settings_returns_dict(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        dlg = PreferencesDialog()
+        qtbot.addWidget(dlg)
+        s = dlg.get_settings()
+        assert isinstance(s, dict)
+        assert 'poll_interval_ms' in s
+        assert 'max_samples' in s
+        assert 'time_window_s' in s
+        assert 'cell_size' in s
+        assert 'led_refresh_ms' in s
+
+    def test_spinbox_ranges_poll_interval(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        dlg = PreferencesDialog()
+        qtbot.addWidget(dlg)
+        assert dlg._poll_interval.minimum() == 50
+        assert dlg._poll_interval.maximum() == 5000
+
+    def test_spinbox_ranges_max_samples(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        dlg = PreferencesDialog()
+        qtbot.addWidget(dlg)
+        assert dlg._max_samples.minimum() == 10
+        assert dlg._max_samples.maximum() == 10000
+
+    def test_spinbox_ranges_cell_size(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import PreferencesDialog
+        dlg = PreferencesDialog()
+        qtbot.addWidget(dlg)
+        assert dlg._cell_size.minimum() == 10
+        assert dlg._cell_size.maximum() == 80
 
 
 class TestSenseEmuDesktop:
@@ -193,6 +313,490 @@ class TestSenseEmuDesktop:
             window = SenseEmuDesktop()
             qtbot.addWidget(window)
             window._open_recording()  # should not raise when dialog is cancelled
+
+    def test_has_led_matrix_widget(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop, LEDMatrixWidget
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            assert isinstance(window.matrix, LEDMatrixWidget)
+
+    def test_has_matrix_size_spinbox(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            assert window._matrix_size_spin is not None
+
+    def test_matrix_size_spin_changes_cell_size(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            window._matrix_size_spin.setValue(20)
+            assert window.matrix.cell_size() == 20
+
+    def test_default_settings_keys(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            for key in ('poll_interval_ms', 'max_samples', 'time_window_s',
+                        'cell_size', 'led_refresh_ms'):
+                assert key in window._settings
+
+    def test_apply_settings_updates_matrix(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            window._settings['cell_size'] = 30
+            window._apply_settings()
+            assert window.matrix.cell_size() == 30
+
+    def test_apply_settings_updates_led_refresh(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            window._settings['led_refresh_ms'] = 250
+            window._apply_settings()
+            assert window.matrix.timer.interval() == 250
+
+    def test_open_preferences_dialog_cancelled(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            original_cell = window._settings['cell_size']
+            with patch('sense_emu.pyside_app.PreferencesDialog') as mock_dlg_cls:
+                mock_dlg = MagicMock()
+                mock_dlg.exec.return_value = 0  # QDialog.Rejected
+                mock_dlg_cls.return_value = mock_dlg
+                window._open_preferences()
+            # Settings should not change when dialog is cancelled
+            assert window._settings['cell_size'] == original_cell
+
+    def test_open_preferences_dialog_accepted(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        from PySide6.QtWidgets import QDialog
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            new_settings = {
+                'poll_interval_ms': 400,
+                'max_samples': 200,
+                'time_window_s': 45,
+                'cell_size': 35,
+                'led_refresh_ms': 150,
+            }
+            with patch('sense_emu.pyside_app.PreferencesDialog') as mock_dlg_cls:
+                mock_dlg = MagicMock()
+                mock_dlg.exec.return_value = QDialog.Accepted
+                mock_dlg.get_settings.return_value = new_settings
+                mock_dlg_cls.return_value = mock_dlg
+                window._open_preferences()
+            assert window._settings['cell_size'] == 35
+            assert window._settings['max_samples'] == 200
+
+    def test_settings_roundtrip(self, qtbot, emulator, tmp_screen_file):
+        """Settings saved on close are restored when a new window opens."""
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            win1 = SenseEmuDesktop()
+            qtbot.addWidget(win1)
+            win1._matrix_size_spin.setValue(55)   # triggers _on_matrix_size_changed
+            win1._save_settings()                  # flush to disk
+
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            win2 = SenseEmuDesktop()
+            qtbot.addWidget(win2)
+            assert win2._settings['cell_size'] == 55
+            assert win2.matrix.cell_size() == 55
+
+    def test_has_qsettings(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        from PySide6.QtCore import QSettings
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+            assert isinstance(window._qsettings, QSettings)
+
+
+class TestPlaybackGUI:
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def test_has_playback_bar_hidden(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert not window._playback_bar.isVisible()
+
+    def test_has_player_none_initially(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert window._player is None
+
+    def test_start_playback_cancelled_dialog(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch('sense_emu.pyside_app.QFileDialog.getOpenFileName',
+                   return_value=('', '')):
+            window._start_playback()
+        assert window._player is None
+
+    def test_stop_playback_hides_bar(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._playback_bar.setVisible(True)
+        window._stop_playback()
+        assert not window._playback_bar.isVisible()
+
+    def test_poll_playback_updates_progress(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        mock_player = MagicMock()
+        mock_player.running = True
+        mock_player.progress = 0.5
+        window._player = mock_player
+        window._poll_playback()
+        assert window._playback_progress.value() == 50
+
+    def test_poll_playback_hides_bar_when_done(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        mock_player = MagicMock()
+        mock_player.running = False
+        mock_player.progress = 1.0
+        window._player = mock_player
+        window._playback_bar.setVisible(True)
+        window._poll_playback()
+        assert not window._playback_bar.isVisible()
+
+
+class TestRecordingGUI:
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def test_has_rec_bar_hidden(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert not window._rec_bar.isVisible()
+
+    def test_start_recording_cancelled_dialog(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch('sense_emu.pyside_app.QFileDialog.getSaveFileName',
+                   return_value=('', '')):
+            window._start_recording()
+        assert window._recorder is None
+
+    def test_toggle_recording_starts_when_idle(self, qtbot, emulator, tmp_screen_file, tmp_path):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        path = str(tmp_path / 'rec.bin')
+        mock_rec = MagicMock()
+        with patch('sense_emu.pyside_app.Recorder', return_value=mock_rec), \
+             patch('sense_emu.pyside_app.QFileDialog.getSaveFileName',
+                   return_value=(path, '')):
+            window._toggle_recording()
+        mock_rec.start.assert_called_once()
+
+    def test_toggle_recording_stops_when_running(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        mock_rec = MagicMock()
+        mock_rec.running = True
+        window._recorder = mock_rec
+        window._toggle_recording()
+        mock_rec.stop.assert_called_once()
+
+    def test_stop_recording_hides_bar(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._rec_bar.setVisible(True)
+        mock_rec = MagicMock()
+        window._recorder = mock_rec
+        window._stop_recording()
+        assert not window._rec_bar.isVisible()
+
+    def test_poll_recording_updates_label(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        mock_rec = MagicMock()
+        mock_rec.running = True
+        mock_rec.record_count = 17
+        window._recorder = mock_rec
+        window._poll_recording()
+        assert '17' in window._rec_label.text()
+
+    def test_start_recording_blocked_during_replay(self, qtbot, emulator, tmp_screen_file, tmp_path):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        mock_player = MagicMock()
+        mock_player.running = True
+        window._player = mock_player
+        with patch('sense_emu.pyside_app.QMessageBox.warning') as mock_warn, \
+             patch('sense_emu.pyside_app.QFileDialog.getSaveFileName') as mock_dlg:
+            window._start_recording()
+        mock_warn.assert_called_once()
+        mock_dlg.assert_not_called()
+
+
+class TestSingleInstanceError:
+    """GUI main() must show a friendly warning when emulator is already running."""
+
+    def test_runtime_error_shows_warning_and_exits(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import main
+        with patch('sense_emu.pyside_app.QApplication') as mock_app_cls, \
+             patch('sense_emu.pyside_app.SenseEmuDesktop',
+                   side_effect=RuntimeError('already running')), \
+             patch('sense_emu.pyside_app.QMessageBox') as mock_msgbox, \
+             patch('sys.exit') as mock_exit:
+            mock_app_cls.return_value = MagicMock()
+            main()
+        mock_msgbox.warning.assert_called_once()
+        mock_msgbox.critical.assert_not_called()
+        warn_args = mock_msgbox.warning.call_args[0]
+        body = warn_args[2]
+        assert 'running' in body.lower() or 'emulator' in body.lower()
+        mock_exit.assert_called_once_with(1)
+
+    def test_other_exception_shows_critical(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import main
+        with patch('sense_emu.pyside_app.QApplication') as mock_app_cls, \
+             patch('sense_emu.pyside_app.SenseEmuDesktop',
+                   side_effect=OSError('disk full')), \
+             patch('sense_emu.pyside_app.QMessageBox') as mock_msgbox, \
+             patch('sys.exit') as mock_exit:
+            mock_app_cls.return_value = MagicMock()
+            main()
+        mock_msgbox.critical.assert_called_once()
+        mock_exit.assert_called_once_with(1)
+
+
+class TestJoystickEvents:
+    """The GUI joystick must send real evdev events to the StickServer."""
+
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def _sent_events(self, mock_stick):
+        import struct
+        from sense_emu.stick import SenseStick
+        return [struct.unpack(SenseStick.EVENT_FORMAT, c[0][0])
+                for c in mock_stick.send.call_args_list]
+
+    @pytest.mark.parametrize('direction,key_attr', [
+        ('UP', 'KEY_UP'), ('DOWN', 'KEY_DOWN'), ('LEFT', 'KEY_LEFT'),
+        ('RIGHT', 'KEY_RIGHT'), ('MIDDLE', 'KEY_ENTER'),
+    ])
+    def test_press_sends_press_and_release(self, qtbot, emulator,
+                                           tmp_screen_file, direction, key_attr):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            window._on_stick_press(direction)
+            events = self._sent_events(mock_stick)
+        assert len(events) == 2
+        expected_key = getattr(SenseStick, key_attr)
+        (_, _, t1, code1, val1), (_, _, t2, code2, val2) = events
+        assert t1 == t2 == SenseStick.EV_KEY
+        assert code1 == code2 == expected_key
+        assert val1 == SenseStick.STATE_PRESS
+        assert val2 == SenseStick.STATE_RELEASE
+
+    def test_keyboard_arrow_sends_real_events(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtCore import QEvent
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            press = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)
+            window.keyPressEvent(press)
+            release = QKeyEvent(QEvent.KeyRelease, Qt.Key_Up, Qt.NoModifier)
+            window.keyReleaseEvent(release)
+            events = self._sent_events(mock_stick)
+        assert len(events) == 2
+        assert events[0][3] == SenseStick.KEY_UP
+        assert events[0][4] == SenseStick.STATE_PRESS
+        assert events[1][4] == SenseStick.STATE_RELEASE
+
+
+class TestJoystickHold:
+    """Tests for press-and-hold (STATE_HOLD) behavior."""
+
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def _sent_events(self, mock_stick):
+        import struct
+        from sense_emu.stick import SenseStick
+        return [struct.unpack(SenseStick.EVENT_FORMAT, c[0][0])
+                for c in mock_stick.send.call_args_list]
+
+    def test_stick_pressed_sends_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            window._stick_pressed("UP")
+            events = self._sent_events(mock_stick)
+        assert len(events) == 1
+        assert events[0][4] == SenseStick.STATE_PRESS
+        window._hold_timer.stop()
+
+    def test_stick_released_sends_release(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            window._stick_pressed("DOWN")
+            window._stick_released("DOWN")
+            events = self._sent_events(mock_stick)
+        assert events[-1][4] == SenseStick.STATE_RELEASE
+        assert not window._hold_timer.isActive()
+
+    def test_send_hold_sends_hold_event(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._hold_direction = "LEFT"
+        with patch.object(window.controller, 'stick') as mock_stick:
+            window._send_hold()
+            events = self._sent_events(mock_stick)
+        assert events[0][4] == SenseStick.STATE_HOLD
+
+    def test_send_hold_noop_without_direction(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._hold_direction = None
+        with patch.object(window.controller, 'stick') as mock_stick:
+            window._send_hold()
+        mock_stick.send.assert_not_called()
+
+    def test_keyboard_autorepeat_sends_hold(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtCore import QEvent
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            event = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier,
+                              autorep=True)
+            window.keyPressEvent(event)
+            events = self._sent_events(mock_stick)
+        assert len(events) == 1
+        assert events[0][4] == SenseStick.STATE_HOLD
+
+    def test_keyboard_release_autorepeat_ignored(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtCore import QEvent
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            event = QKeyEvent(QEvent.KeyRelease, Qt.Key_Up, Qt.NoModifier,
+                              autorep=True)
+            window.keyReleaseEvent(event)
+        mock_stick.send.assert_not_called()
+
+
+class TestKeyboardJoystick:
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def _press_key(self, window, qt_key):
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtCore import QEvent
+        event = QKeyEvent(QEvent.KeyPress, qt_key, Qt.NoModifier)
+        window.keyPressEvent(event)
+        return event
+
+    def _sent_key_codes(self, window, qt_key):
+        import struct
+        from sense_emu.stick import SenseStick
+        events = []
+        with patch.object(window.controller, 'stick') as mock_stick:
+            self._press_key(window, qt_key)
+            events = [struct.unpack(SenseStick.EVENT_FORMAT, c[0][0])
+                      for c in mock_stick.send.call_args_list]
+        return events
+
+    def test_arrow_up_sends_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        events = self._sent_key_codes(window, Qt.Key_Up)
+        assert len(events) >= 1
+        assert events[0][3] == SenseStick.KEY_UP
+        assert events[0][4] == SenseStick.STATE_PRESS
+        window._hold_timer.stop()
+
+    def test_arrow_down_sends_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        events = self._sent_key_codes(window, Qt.Key_Down)
+        assert events[0][3] == SenseStick.KEY_DOWN
+        window._hold_timer.stop()
+
+    def test_arrow_left_sends_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        events = self._sent_key_codes(window, Qt.Key_Left)
+        assert events[0][3] == SenseStick.KEY_LEFT
+        window._hold_timer.stop()
+
+    def test_arrow_right_sends_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        events = self._sent_key_codes(window, Qt.Key_Right)
+        assert events[0][3] == SenseStick.KEY_RIGHT
+        window._hold_timer.stop()
+
+    def test_return_sends_enter_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        events = self._sent_key_codes(window, Qt.Key_Return)
+        assert events[0][3] == SenseStick.KEY_ENTER
+        window._hold_timer.stop()
+
+    def test_enter_key_sends_enter_press(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.stick import SenseStick
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        events = self._sent_key_codes(window, Qt.Key_Enter)
+        assert events[0][3] == SenseStick.KEY_ENTER
+        window._hold_timer.stop()
+
+    def test_other_key_does_not_send_event(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(window.controller, 'stick') as mock_stick:
+            self._press_key(window, Qt.Key_Space)
+        mock_stick.send.assert_not_called()
+
+    def test_arrow_key_event_accepted(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtCore import QEvent
+        event = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)
+        window.keyPressEvent(event)
+        window._hold_timer.stop()
+        assert event.isAccepted()
 
 
 class TestTelemetryPanel:
@@ -299,6 +903,48 @@ class TestTelemetryPanel:
         panel.clear()
         assert panel._series['pressure'].count() == 0
 
+    def test_apply_settings_max_samples(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import TelemetryPanel
+        panel = TelemetryPanel()
+        qtbot.addWidget(panel)
+        panel.apply_settings({'max_samples': 50})
+        assert panel._max_samples == 50
+
+    def test_apply_settings_poll_interval(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import TelemetryPanel
+        panel = TelemetryPanel()
+        qtbot.addWidget(panel)
+        panel.apply_settings({'poll_interval_ms': 500})
+        assert panel._poll_interval_ms == 500
+
+    def test_apply_settings_time_window(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import TelemetryPanel
+        panel = TelemetryPanel()
+        qtbot.addWidget(panel)
+        panel.apply_settings({'time_window_s': 30})
+        assert panel._time_window_s == 30
+
+    def test_apply_settings_updates_active_timer(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import TelemetryPanel
+        panel = TelemetryPanel()
+        qtbot.addWidget(panel)
+        panel.set_live(_make_mock_hat())
+        panel.apply_settings({'poll_interval_ms': 400})
+        assert panel._timer.interval() == 400
+        panel._timer.stop()
+
+    def test_default_poll_interval(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import TelemetryPanel
+        panel = TelemetryPanel()
+        qtbot.addWidget(panel)
+        assert panel._poll_interval_ms == 200
+
+    def test_default_time_window(self, qtbot, tmp_screen_file):
+        from sense_emu.pyside_app import TelemetryPanel
+        panel = TelemetryPanel()
+        qtbot.addWidget(panel)
+        assert panel._time_window_s == 60
+
 
 class TestParseRecording:
     def test_parse_valid(self, sample_recording):
@@ -379,6 +1025,225 @@ class TestPysideMain:
         assert hasattr(pm, 'main')
 
 
+class TestScreenWriter:
+    def test_set_pixel_writes_rgb565(self, tmp_screen_file):
+        from sense_emu.screen import ScreenWriter, ScreenClient
+        writer = ScreenWriter()
+        try:
+            writer.set_pixel(3, 2, 255, 0, 0)
+        finally:
+            writer.close()
+        client = ScreenClient()
+        try:
+            val = int(client.array[2, 3])
+        finally:
+            client.close()
+        assert (val & 0xF800) >> 11 == 31  # max red in 5-bit
+
+    def test_clear_resets_all_pixels(self, tmp_screen_file):
+        from sense_emu.screen import ScreenWriter, ScreenClient
+        writer = ScreenWriter()
+        try:
+            writer.set_pixel(0, 0, 255, 255, 255)
+            writer.clear()
+        finally:
+            writer.close()
+        client = ScreenClient()
+        try:
+            val = int(client.array[0, 0])
+        finally:
+            client.close()
+        assert val == 0
+
+    def test_clear_with_color(self, tmp_screen_file):
+        from sense_emu.screen import ScreenWriter, ScreenClient
+        writer = ScreenWriter()
+        try:
+            writer.clear(r=0, g=0, b=248)
+        finally:
+            writer.close()
+        client = ScreenClient()
+        try:
+            val = int(client.array[0, 0])
+        finally:
+            client.close()
+        assert (val & 0x001F) == 31  # max blue in 5-bit
+
+    def test_close_is_idempotent(self, tmp_screen_file):
+        from sense_emu.screen import ScreenWriter
+        writer = ScreenWriter()
+        writer.close()
+        writer.close()  # second close must not raise
+
+
+class TestPaintMode:
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def test_has_paint_toggle(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert window._paint_toggle is not None
+
+    def test_paint_mode_off_by_default(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert not window.matrix._paint_mode
+
+    def test_toggle_enables_paint_mode(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._paint_toggle.setChecked(True)
+        assert window.matrix._paint_mode
+
+    def test_toggle_disables_paint_mode(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._paint_toggle.setChecked(True)
+        window._paint_toggle.setChecked(False)
+        assert not window.matrix._paint_mode
+
+    def test_cell_painted_writes_pixel(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.screen import ScreenClient
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        from PySide6.QtGui import QColor
+        window._paint_color = QColor(255, 0, 0)
+        window.matrix.set_paint_color(QColor(255, 0, 0))
+        window._on_cell_painted(0, 0)
+        client = ScreenClient()
+        try:
+            val = int(client.array[0, 0])
+        finally:
+            client.close()
+        assert (val & 0xF800) >> 11 == 31
+        if window._screen_writer:
+            window._screen_writer.close()
+            window._screen_writer = None
+
+    def test_screen_writer_lazy_init(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert window._screen_writer is None
+        window._on_cell_painted(1, 1)
+        assert window._screen_writer is not None
+        window._screen_writer.close()
+        window._screen_writer = None
+
+    def test_clear_matrix_creates_writer(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert window._screen_writer is None
+        window._clear_matrix()
+        assert window._screen_writer is not None
+        window._screen_writer.close()
+        window._screen_writer = None
+
+    def test_close_event_closes_screen_writer(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtGui import QCloseEvent
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._on_cell_painted(0, 0)
+        assert window._screen_writer is not None
+        event = QCloseEvent()
+        window.closeEvent(event)
+        assert window._screen_writer is None
+
+    def test_cell_at_returns_correct_coords(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtCore import QPoint
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window.matrix.resize(320, 320)
+        # pixel at (20, 20) → cell (0, 0)  (each cell is 40px)
+        cx, cy = window.matrix._cell_at(QPoint(20, 20))
+        assert cx == 0 and cy == 0
+        # pixel at (200, 160) → cell (5, 4)
+        cx, cy = window.matrix._cell_at(QPoint(200, 160))
+        assert cx == 5 and cy == 4
+
+    def test_cell_at_out_of_bounds(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtCore import QPoint
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window.matrix.resize(320, 320)
+        cx, cy = window.matrix._cell_at(QPoint(-1, -1))
+        assert cx is None and cy is None
+
+
+class TestRotation:
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def test_default_rotation_zero(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert window.matrix.rotation() == 0
+
+    def test_rotate_cw_increases_by_90(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._rotate_cw()
+        assert window.matrix.rotation() == 90
+
+    def test_rotate_ccw_decreases_by_90(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._rotate_cw()   # → 90
+        window._rotate_ccw()  # → 0
+        assert window.matrix.rotation() == 0
+
+    def test_rotation_wraps_at_360(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        for _ in range(4):
+            window._rotate_cw()
+        assert window.matrix.rotation() == 0
+
+    def test_rotation_persisted_in_settings(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._rotate_cw()
+        assert window._settings['rotation'] == 90
+
+    def test_rotation_roundtrip(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            win1 = SenseEmuDesktop()
+            qtbot.addWidget(win1)
+            win1._rotate_cw()  # 90
+            win1._save_settings()
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            win2 = SenseEmuDesktop()
+            qtbot.addWidget(win2)
+            assert win2.matrix.rotation() == 90
+
+    def test_keyboard_up_remapped_after_rotate_cw(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtGui import QKeyEvent
+        from PySide6.QtCore import QEvent
+        from sense_emu.stick import SenseStick
+        import struct
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._rotate_cw()  # 90° CW → up becomes right
+        with patch.object(window.controller, 'stick') as mock_stick:
+            event = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)
+            window.keyPressEvent(event)
+            window._hold_timer.stop()
+            calls = [struct.unpack(SenseStick.EVENT_FORMAT, c[0][0])
+                     for c in mock_stick.send.call_args_list]
+        assert calls[0][3] == SenseStick.KEY_RIGHT
+
+    def test_matrix_update_applies_rotation(self, qtbot, emulator, tmp_screen_file):
+        import numpy as np
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window.matrix.timer.stop()
+        rgb = np.zeros((8, 8, 3), dtype=np.uint8)
+        rgb[0, 0] = [255, 0, 0]  # red at top-left
+        window.matrix._screen_client = MagicMock()
+        window.matrix._screen_client.rgb_array = rgb
+        window.matrix.set_rotation(90)
+        window.matrix.update_matrix()
+        data = window.matrix.matrix_data
+        # after 90° rot, top-left should not be red any more (red moves to another cell)
+        assert data[0:3] != bytes([255, 0, 0])
+
+
 class TestPysideMainFunction:
     def test_main_calls_sys_exit(self, tmp_screen_file, emulator):
         from sense_emu.pyside_app import main
@@ -394,14 +1259,27 @@ class TestPysideMainFunction:
             main()
         mock_exit.assert_called_once_with(0)
 
-    def test_main_shows_dialog_on_exception(self, tmp_screen_file, emulator):
+    def test_main_shows_critical_on_non_runtime_exception(self, tmp_screen_file, emulator):
         from sense_emu.pyside_app import main
         with patch('sense_emu.pyside_app.QApplication') as mock_app_cls, \
              patch('sense_emu.pyside_app.SenseEmuDesktop',
-                   side_effect=RuntimeError('test error')), \
+                   side_effect=OSError('disk full')), \
              patch('sense_emu.pyside_app.QMessageBox') as mock_msgbox, \
              patch('sys.exit') as mock_exit:
             mock_app_cls.return_value = MagicMock()
             main()
         mock_msgbox.critical.assert_called_once()
+        mock_exit.assert_called_once_with(1)
+
+    def test_main_shows_warning_on_runtime_error(self, tmp_screen_file, emulator):
+        from sense_emu.pyside_app import main
+        with patch('sense_emu.pyside_app.QApplication') as mock_app_cls, \
+             patch('sense_emu.pyside_app.SenseEmuDesktop',
+                   side_effect=RuntimeError('already running')), \
+             patch('sense_emu.pyside_app.QMessageBox') as mock_msgbox, \
+             patch('sys.exit') as mock_exit:
+            mock_app_cls.return_value = MagicMock()
+            main()
+        mock_msgbox.warning.assert_called_once()
+        mock_msgbox.critical.assert_not_called()
         mock_exit.assert_called_once_with(1)
