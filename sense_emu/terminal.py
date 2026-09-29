@@ -140,7 +140,7 @@ class TerminalApplication:
         self.parser.add_argument(
             '-v', '--verbose', dest='log_level', action='store_const',
             const=logging.INFO, help=_('produce more console output'))
-        opt = self.parser.add_argument(
+        opt = self.parser.add_argument(  # noqa: F841 (used by the completer TODO below)
             '-l', '--log-file', metavar='FILE',
             help=_('log messages to the specified file'))
         if argcomplete:

@@ -26,7 +26,6 @@ import numpy as np
 import shutil
 import glob
 import array
-import struct
 import subprocess as sp
 import warnings
 from PIL import Image  # pillow

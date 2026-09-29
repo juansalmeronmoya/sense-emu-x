@@ -39,3 +39,15 @@ coverage
 # Generated images
 icons/*/
 !icons/scalable/
+
+# Local test/debug output (never commit)
+test_output*.txt
+test_result*.txt
+test_run*.txt
+test_summary*.txt
+final_test*.txt
+coverage.xml
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

@@ -22,7 +22,7 @@ def print_sensors(hat):
 
     # IMU (Inertial Measurement Unit)
     orientation = hat.get_orientation()
-    print(f"\nOrientation (degrees):")
+    print("\nOrientation (degrees):")
     print(f"  Pitch: {orientation['pitch']:.2f}°")
     print(f"  Roll: {orientation['roll']:.2f}°")
     print(f"  Yaw: {orientation['yaw']:.2f}°")

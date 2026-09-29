@@ -32,54 +32,11 @@ from .stick import (
     ACTION_HELD,
     )
 
+# NB: __project__ is the gettext domain (matches the compiled .mo files),
+# not the PyPI distribution name (sense-emu-x). All other packaging metadata
+# lives in pyproject.toml.
 __project__      = 'sense-emu'
 __version__      = '1.2.1'
 __author__       = 'Raspberry Pi Foundation'
 __author_email__ = 'info@raspberrypi.org'
-__url__          = 'https://sense-emu.readthedocs.io/'
-__platforms__    = ['ALL']
-
-__classifiers__ = [
-    'Development Status :: 5 - Production/Stable',
-    'Environment :: Console',
-    'Environment :: X11 Applications :: Qt',
-    'Intended Audience :: Developers',
-    'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
-    'License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)',
-    'Operating System :: OS Independent',
-    'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.8',
-    'Programming Language :: Python :: 3.9',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
-    'Programming Language :: Python :: 3.12',
-    'Programming Language :: Python :: 3.13',
-    'Topic :: Scientific/Engineering',
-    ]
-
-__keywords__ = [
-    'raspberrypi', 'sense', 'hat'
-    ]
-
-__requires__ = [
-    'numpy', 'Pillow',
-    ]
-
-__extra_requires__ = {
-    'doc':  ['sphinx', 'sphinx-rtd-theme'],
-    'test': ['pytest', 'pytest-cov', 'pytest-env', 'pytest-qt', 'mock', 'PySide6'],
-    'gui':  ['PySide6'],
-    'tui':  ['textual'],
-    }
-
-__entry_points__ = {
-    'console_scripts': [
-        'sense_rec = sense_emu.record:app',
-        'sense_play = sense_emu.play:app',
-        'sense_csv = sense_emu.dump:app',
-        'sense_emu_tui = sense_emu.tui:main',
-        ],
-    'gui_scripts': [
-        'sense_emu_gui = sense_emu.pyside_app:main',
-        ],
-    }
+__url__          = 'https://github.com/juansalmeronmoya/sense-emu-x'

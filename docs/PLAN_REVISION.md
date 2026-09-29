@@ -57,7 +57,7 @@ los marcados ◐ son plausibles y se verificarán al abordarlos.
 | P1-2 | ✔ | `sense_hat.py` (clase), `pyside_app.py:868-870` | `SenseHat` sin `close()` ni context manager; hilo + socket del joystick solo se liberan por GC. La GUI crea un `SenseHat()` nuevo cada vez que se pulsa "Emulator" sin cerrar el anterior. | `SenseHat.close()`, `__enter__/__exit__`; la GUI reutiliza/cierra la instancia. |
 | P1-3 | ◐ | `stick.py:91-169` | El socket cliente UNIX (`rpi-sense-emu-client-<pid>`) nunca se borra en `close()` → ficheros huérfanos. | `os.unlink` en `close()`. |
 | P1-4 | ✔ | `pyside_app.py:1053-1064` | `closeEvent` no para `matrix.timer` ni `_hold_timer` antes de `controller.close()`; el tick siguiente falla contra un mmap cerrado (silenciado). | Parar todos los timers antes de cerrar. |
-| P1-5 | ✔ | `terminal.py:109` | `locale.getdefaultlocale()` se elimina en Python 3.15 y se ejecuta al importar → rompe `sense_rec/sense_play/sense_csv`. | `locale.getencoding()` con fallback para <3.11. |
+| P1-5 | ✔ | `terminal.py:109` | `locale.getdefaultlocale()` se elimina en Python 3.15 y se ejecuta al importar → rompe `sense_rec/sense_play/sense_csv`. | `locale.getencoding()` (sin fallback: el mínimo es 3.11). |
 | P1-6 | ✔ | `pyside_app.py:106,359`, `tui.py:59,117` | `except Exception: pass` en todos los pollers: errores reales invisibles. | `logging` + indicador en barra de estado. |
 | P1-7 | ◐ | `sense_hat.py:275` vs `screen.py:166` | Framebuffer escrito con orden de bytes nativo en un sitio y `'<H'` en otro. | `'<H'` explícito en ambos. |
 | P1-8 | ◐ | `sense_hat.py:335-410` | `set_pixel(s)`/`get_pixel(s)` abren y cierran el fichero en cada llamada (coste alto en `show_message`). | Reutilizar un mmap persistente. |
@@ -209,7 +209,7 @@ quedan como alias para no romper los entry points existentes.
 | Alta | `RELEASE.md` | Documenta publicación por tag + `PYPI_API_TOKEN`; `publish.yml` real usa `release: published` + OIDC trusted publishing (correcto). | Reescribir la sección. |
 | Media | `pyproject.toml` package-data + `.gitignore` | Se declaran `.mo` pero nunca se compilan en el build → wheels sin traducciones. | Paso `msgfmt` en build (hook o CI). |
 | Media | README / pyproject / `__init__` | Versión 1.0.0 vs 1.2.1; "427 tests / 91,67 %" hardcodeado (real: 661 / 92 %). | Una sola fuente de versión (`__init__` dinámico); badges en vez de cifras. |
-| Media | `pyproject.toml:32` | `requires-python >=3.8` pero CI prueba 3.10+; 3.8 y 3.9 están EOL. Falta clasificador 3.14. | `>=3.10`, clasificadores 3.10–3.14. |
+| Media | `pyproject.toml:32` | `requires-python >=3.8` pero CI prueba 3.10+; 3.8 y 3.9 están EOL. Falta clasificador 3.14. | `>=3.11`, clasificadores 3.11–3.14 (decisión §9.2). |
 | Baja | `pyproject.toml:10` | Licencia dual (LGPL lib / GPL apps) expresada solo como GPL. | `license-files` + expresión SPDX correcta. |
 | Baja | `.pre-commit-config.yaml` | black+isort+flake8+pydocstyle; nada de eso bloquea en CI. | Sustituir por `ruff` (lint+format) y ejecutarlo en CI. |
 
@@ -218,7 +218,7 @@ quedan como alias para no romper los entry points existentes.
 ```
 lint        ubuntu · ruff check · ruff format --check              (bloqueante)
 typecheck   ubuntu · mypy sense_emu (progresivo, bloqueante al estabilizar)
-test        matriz {ubuntu, windows, macos} × {3.10 … 3.14}
+test        matriz {ubuntu, windows, macos} × {3.11 … 3.14}
             pip install -e ".[gui,tui,test]" · pytest · upload coverage
 coverage    combina los .coverage de la matriz · fail-under 90 global
 build       python -m build · twine check · msgfmt · artefacto wheel/sdist
@@ -248,18 +248,25 @@ Las fases 0–2 son independientes de la arquitectura y pueden entrar ya; la fas
 conviene hacerla **antes** de añadir features (fases 5–6) para no duplicarlas en GUI y TUI.
 
 ### Criterios de "hecho" globales
-- CI verde en Linux, Windows y macOS para Python 3.10–3.14.
+- CI verde en Linux, Windows y macOS para Python 3.11–3.14.
 - 0 warnings no filtrados en la suite; cobertura combinada ≥ 90 %.
 - `pipx install sense-emu-x[gui]` → `sense_emu_gui` funciona en los tres SO; un script con `from sense_emu import SenseHat` lee valores físicamente correctos (unidades verificadas por test).
 - Docs y README describen exactamente lo que hay.
 
 ---
 
-## 9. Decisiones abiertas (requieren al propietario)
+## 9. Decisiones (resueltas por el propietario)
 
-1. **Nombre en PyPI**: `sense-emu-x` (propuesto) u otro. Bloquea cualquier publicación.
-2. **Python mínimo**: propuesta `>=3.10`.
-3. **Cambio de unidades del giroscopio**: es un cambio de comportamiento visible (correcto según la documentación). ¿Se anota como *breaking fix* en el changelog con versión 2.0?
-4. **Sense HAT v2 (sensor de color)**: ¿dentro del alcance?
-5. **Ejecutables nativos** (PyInstaller) o solo `pip`/`pipx`.
-6. **Formato del mmap compartido**: al cambiar `GYRO_FACTOR` o el namespacing de ficheros, una GUI de versión antigua y una librería nueva no interoperan. Propuesta: añadir un campo de versión al formato y fallar con un mensaje claro.
+| # | Decisión | Resolución |
+|---|---|---|
+| 1 | Nombre en PyPI | **`sense-emu-x`** (el paquete importable sigue siendo `sense_emu`). |
+| 2 | Python mínimo | **3.11**: la versión más antigua de CPython que sigue con soporte de seguridad (3.10 llega a EOL en octubre de 2026). Matriz de CI 3.11–3.14. |
+| 3 | Unidades del giroscopio | Se aplica como *breaking fix*: versión **2.0.0** y entrada explícita en el changelog. |
+| 4 | Sense HAT v2 (sensor de color) | **Dentro del alcance** (Fase 6). |
+| 5 | Distribución | **Ambas**: paquete en PyPI (pip/pipx) **y** ejecutables nativos con PyInstaller por SO adjuntos a cada release (Fase 7). |
+| 6 | Versión en el formato mmap | **Sí**: campo de versión y error claro si no coincide (se implementa junto con `_shm.py`, Fase 2). |
+
+### Notas de ejecución
+- El renombrado de la distribución (`sense-emu-x`), `requires-python`, clasificadores, URLs y licencia SPDX se adelantaron a la **Fase 0** porque publicar con el nombre anterior escribiría sobre un proyecto ajeno.
+- `ruff format --check` y el job de `mypy` se posponen: reformatear todo el código ahora ocultaría los cambios reales en el diff. Entran cuando se haga un único commit de formato.
+- El `Makefile` distingue ahora nombre de distribución (`sense-emu-x`), directorio del paquete (`sense_emu`) y dominio gettext (`sense-emu`).

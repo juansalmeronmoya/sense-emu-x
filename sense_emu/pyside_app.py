@@ -1068,7 +1068,7 @@ def main():
     app = QApplication(sys.argv)
     try:
         window = SenseEmuDesktop()
-    except RuntimeError as e:
+    except RuntimeError:
         QMessageBox.warning(
             None, 'Sense HAT Emulator — Already running',
             'Another instance of the Sense HAT emulator is already running.\n\n'

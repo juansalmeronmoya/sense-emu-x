@@ -289,7 +289,7 @@ class IMUServer:
                 accel = R.T.dot(self._gravity) # transpose for passive rotation
                 compass = R.T.dot(self._north)
                 then = now
-                position = new_position
+                position = new_position  # noqa: F841 (reserved for acceleration simulation)
                 orientation = new_orientation
             # XXX Simulate acceleration from position
             yield now, accel, gyro, compass
