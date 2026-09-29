@@ -43,6 +43,11 @@ The distribution is now published as ``sense-emu-x`` (the import name is still
 * ``sense_rec``, ``sense_play`` and ``sense_csv`` no longer use
   ``locale.getdefaultlocale()``, which was removed in Python 3.15.
 * Fixed a ``NameError`` when loading ``intl.dll`` for translations on Windows.
+* macOS: the lock can tell when a recorded PID has been recycled (the process
+  start time is now read with ``ps`` where there is no ``/proc``).
+* ``EmulatorController`` no longer hides the real reason for a failed start
+  (for example a socket path that is too long) behind "another process is
+  running"; the underlying error is now part of the message.
 
 
 Release 1.2 (2021-09-03)

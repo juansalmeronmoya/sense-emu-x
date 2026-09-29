@@ -130,6 +130,18 @@ class TestEmulatorControllerCleanup:
                 EmulatorController(simulate_imu=False, simulate_env=False)
         assert EmulatorLock('check')._is_held() is False
 
+    def test_error_message_keeps_the_real_cause(self, emulator_patches):
+        # macOS: "AF_UNIX path too long" was reported as merely "another
+        # process is running", hiding the actual problem
+        with patch('sense_emu.core.StickServer',
+                   side_effect=OSError('AF_UNIX path too long')):
+            with pytest.raises(RuntimeError) as info:
+                EmulatorController(simulate_imu=False, simulate_env=False)
+        message = str(info.value)
+        assert 'Another process' in message
+        assert 'AF_UNIX path too long' in message
+        assert isinstance(info.value.__cause__, OSError)
+
     def test_lock_failure_is_reported_as_runtimeerror(self, emulator_patches):
         with patch('sense_emu.core.EmulatorLock') as lock_cls:
             lock_cls.return_value.acquire.side_effect = FileExistsError

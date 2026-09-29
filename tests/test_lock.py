@@ -239,6 +239,9 @@ class TestProcessStartTime:
         assert process_start_time(os.getpid()) == process_start_time(os.getpid())
 
 
+@pytest.mark.skipif(
+    process_start_time(os.getpid()) is None,
+    reason='process start time is not available on this platform')
 class TestRecycledPidStartTime:
     """A lock whose PID is *alive* but belongs to a different process (recycled
     PID) must be detected as stale via the recorded process start time."""
@@ -584,3 +587,92 @@ class TestOSArbitratedLock:
                 _reap(r)
         assert results.count('won') == 1, results
         assert results.count('lost') == 7, results
+
+
+# ---------------------------------------------------------------------------
+# Start time without /proc (macOS): ps(1) fallback
+# ---------------------------------------------------------------------------
+
+from sense_emu import lock as _lock_module                     # noqa: E402
+from sense_emu.lock import _ps_start_time                      # noqa: E402
+
+
+class _PsResult:
+    def __init__(self, stdout):
+        self.stdout = stdout
+
+
+class TestPsStartTime:
+    def test_parses_ps_output(self):
+        with patch('subprocess.run', return_value=_PsResult('Mon Sep 28 01:12:00 2026\n')):
+            assert _ps_start_time(123) == 1_790_557_920   # 2026-09-28T01:12:00Z
+
+    def test_parses_space_padded_day(self):
+        with patch('subprocess.run', return_value=_PsResult('Wed Sep  9 08:15:42 2026\n')):
+            assert _ps_start_time(123) == 1_788_941_742   # 2026-09-09T08:15:42Z
+
+    def test_environment_is_pinned(self):
+        # ps prints lstart in local time and language: every process must ask
+        # the same question or the tokens would never compare equal
+        with patch('subprocess.run', return_value=_PsResult('')) as run:
+            _ps_start_time(123)
+        env = run.call_args.kwargs['env']
+        assert env['TZ'] == 'UTC'
+        assert env['LC_ALL'] == 'C'
+        assert run.call_args.args[0][-2:] == ['-p', '123']
+
+    @pytest.mark.parametrize('output', ['', 'garbage', 'Mon Sep 28'])
+    def test_unparsable_output_gives_none(self, output):
+        with patch('subprocess.run', return_value=_PsResult(output)):
+            assert _ps_start_time(123) is None
+
+    def test_missing_ps_gives_none(self):
+        with patch('subprocess.run', side_effect=FileNotFoundError('ps')):
+            assert _ps_start_time(123) is None
+
+    def test_ps_timeout_gives_none(self):
+        import subprocess as sp
+        with patch('subprocess.run', side_effect=sp.TimeoutExpired('ps', 5)):
+            assert _ps_start_time(123) is None
+
+    @pytest.mark.skipif(sys.platform.startswith('win') or not os.path.exists('/bin/ps')
+                        and not os.path.exists('/usr/bin/ps'),
+                        reason='needs a POSIX ps')
+    def test_real_ps_for_this_process_is_stable(self):
+        first = _ps_start_time(os.getpid())
+        assert isinstance(first, int) and first > 1_600_000_000
+        assert _ps_start_time(os.getpid()) == first
+
+    @pytest.mark.skipif(sys.platform.startswith('win'), reason='POSIX only')
+    def test_real_ps_for_dead_process_is_none(self):
+        assert _ps_start_time(999_999_999) is None
+
+    @pytest.mark.skipif(sys.platform.startswith('win'), reason='POSIX only')
+    def test_process_start_time_falls_back_to_ps_without_proc(self):
+        with patch.object(_lock_module, '_HAVE_PROC', False), \
+             patch.object(_lock_module, '_ps_start_time', return_value=42) as ps:
+            assert process_start_time(os.getpid()) == 42
+        ps.assert_called_once_with(os.getpid())
+
+    @pytest.mark.skipif(sys.platform.startswith('win'), reason='POSIX only')
+    def test_process_start_time_pid_zero_never_calls_ps(self):
+        with patch.object(_lock_module, '_HAVE_PROC', False), \
+             patch.object(_lock_module, '_ps_start_time') as ps:
+            assert process_start_time(0) is None
+        ps.assert_not_called()
+
+    @pytest.mark.skipif(sys.platform.startswith('win'), reason='POSIX only')
+    def test_lock_works_when_start_time_is_unavailable(self, tmp_lock_file):
+        # A platform where neither /proc nor ps can tell us the start time
+        # must still lock correctly (the field is simply left empty)
+        with patch.object(_lock_module, 'process_start_time', return_value=None):
+            lock = EmulatorLock('one')
+            lock.acquire()
+            try:
+                assert lock.mine is True
+                assert lock._read_pid() == os.getpid()
+                assert lock._read_start_time() is None
+                with pytest.raises(FileExistsError):
+                    EmulatorLock('two').acquire()
+            finally:
+                lock.release()

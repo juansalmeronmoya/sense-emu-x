@@ -12,6 +12,12 @@ logger = logging.getLogger(__name__)
 _ALREADY_RUNNING = 'Another process is currently acting as the Sense HAT emulator'
 
 
+def _describe(exc):
+    # The usual cause is a second instance, but not always (a path that is too
+    # long for a socket, a permissions problem...): keep the real reason visible
+    return '%s (%s: %s)' % (_ALREADY_RUNNING, type(exc).__name__, exc)
+
+
 class EmulatorController:
     def __init__(self, simulate_imu=True, simulate_env=True):
         self.imu = self.pressure = self.humidity = None
@@ -20,7 +26,7 @@ class EmulatorController:
         try:
             self.lock.acquire()
         except Exception as exc:
-            raise RuntimeError(_ALREADY_RUNNING) from exc
+            raise RuntimeError(_describe(exc)) from exc
 
         try:
             self.imu = IMUServer(simulate_world=simulate_imu)
@@ -33,7 +39,7 @@ class EmulatorController:
             # another emulator instance is already running (holding the joystick
             # port), so surface it as the same friendly error and clean up.
             self.close()
-            raise RuntimeError(_ALREADY_RUNNING) from exc
+            raise RuntimeError(_describe(exc)) from exc
         except BaseException:
             # Anything else (corrupt shared file, struct.error, KeyboardInterrupt
             # ...) must not leave the lock held or servers half open.

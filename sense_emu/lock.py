@@ -20,9 +20,32 @@ import sys
 import os
 import io
 import errno
-from time import time, sleep
+import calendar
+import subprocess
+from time import time, sleep, strptime
 
 _LOCK_MAGIC = 'sense-emu-lock'
+
+
+def _ps_start_time(pid):
+    """
+    Start time of *pid* (seconds since the epoch, as an int) as reported by
+    ps(1), or ``None`` if it cannot be determined. Used where there is no
+    ``/proc`` (macOS, BSDs). The environment is pinned so that every process
+    computes the same token whatever its own locale or time zone: ps prints
+    ``lstart`` in local time and in the local language.
+    """
+    env = dict(os.environ, LC_ALL='C', TZ='UTC')
+    try:
+        out = subprocess.run(
+            ['ps', '-o', 'lstart=', '-p', str(pid)],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env,
+            timeout=5, text=True).stdout.strip()
+        # e.g. "Mon Sep  9 08:15:42 2026" (whitespace in the format matches
+        # any run of whitespace, so the padded day is fine)
+        return calendar.timegm(strptime(out, '%a %b %d %H:%M:%S %Y'))
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
 
 
 if sys.platform.startswith('win'):
@@ -101,14 +124,19 @@ else:
         else:
             return True
 
+    _HAVE_PROC = os.path.exists('/proc/self/stat')
+
     def process_start_time(pid):
         """
         Return an opaque, stable token identifying *when* *pid* started, or
-        ``None`` if it cannot be determined (e.g. on systems without
-        ``/proc``). Used to detect PID recycling.
+        ``None`` if it cannot be determined. Used to detect PID recycling.
+        Uses ``/proc`` where available and falls back to ps(1) elsewhere
+        (macOS).
         """
         if pid == 0:
             return None
+        if not _HAVE_PROC:
+            return _ps_start_time(pid)
         try:
             with io.open('/proc/%d/stat' % pid, 'rb') as f:
                 data = f.read()
