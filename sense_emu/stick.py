@@ -24,14 +24,17 @@ import errno
 import struct
 import select
 import inspect
+import logging
 import socket
 from functools import wraps
 from collections import namedtuple
-from threading import Thread, Event
+from threading import Thread, Event, current_thread
 from queue import Queue, Empty
 from time import sleep, time
 
 AF_UNIX = getattr(socket, 'AF_UNIX', None)
+
+logger = logging.getLogger(__name__)
 
 
 DIRECTION_UP     = 'up'
@@ -252,6 +255,16 @@ class SenseStick:
                         'value must be a callable which accepts up to one '
                         'mandatory parameter')
 
+    def _set_callback(self, key, value):
+        callback = self._wrap_callback(value)
+        if callback is None:
+            # Remove the entry entirely: a leftover ``None`` would keep the
+            # dictionary non-empty and so keep the callback thread running
+            self._callbacks.pop(key, None)
+        else:
+            self._callbacks[key] = callback
+        self._start_stop_thread()
+
     def _start_stop_thread(self):
         if self._callbacks and not self._callback_thread:
             self._callback_event.clear()
@@ -259,20 +272,46 @@ class SenseStick:
             self._callback_thread.daemon = True
             self._callback_thread.start()
         elif not self._callbacks and self._callback_thread:
+            thread, self._callback_thread = self._callback_thread, None
             self._callback_event.set()
-            self._callback_thread.join()
-            self._callback_thread = None
+            # A callback may clear its own handler (or close the stick); a
+            # thread cannot join itself, it just falls out of its loop
+            if thread is not current_thread():
+                thread.join()
 
     def _callback_run(self):
-        while not self._callback_event.wait(0):
-            event = self._read()
+        # Poll with a short timeout rather than blocking in read() so that the
+        # thread notices promptly when it is asked to stop (otherwise close()
+        # would hang until the next joystick event arrives)
+        while not self._callback_event.is_set():
+            try:
+                if not self._wait(0.1):
+                    continue
+                event = self._read()
+            except (OSError, ValueError):
+                # The joystick file was closed underneath us: nothing more will
+                # ever arrive, so the thread is finished
+                logger.debug('joystick file closed; stopping callback thread')
+                return
+            except Exception:
+                # A malformed event must not kill event delivery for good
+                logger.exception('Error reading joystick event')
+                self._callback_event.wait(0.1)
+                continue
             if event:
-                callback = self._callbacks.get(event.direction)
-                if callback:
+                self._dispatch(event)
+
+    def _dispatch(self, event):
+        for key in (event.direction, '*'):
+            callback = self._callbacks.get(key)
+            if callback:
+                try:
                     callback(event)
-                callback = self._callbacks.get('*')
-                if callback:
-                    callback(event)
+                except Exception:
+                    # An exception in user code must not stop later events
+                    # from being delivered to this (or any other) callback
+                    logger.exception(
+                        'Exception in joystick callback for %r', key)
 
     def wait_for_event(self, emptybuffer=False):
         """
@@ -318,8 +357,7 @@ class SenseStick:
 
     @direction_up.setter
     def direction_up(self, value):
-        self._callbacks[DIRECTION_UP] = self._wrap_callback(value)
-        self._start_stop_thread()
+        self._set_callback(DIRECTION_UP, value)
 
     @property
     def direction_down(self):
@@ -335,8 +373,7 @@ class SenseStick:
 
     @direction_down.setter
     def direction_down(self, value):
-        self._callbacks[DIRECTION_DOWN] = self._wrap_callback(value)
-        self._start_stop_thread()
+        self._set_callback(DIRECTION_DOWN, value)
 
     @property
     def direction_left(self):
@@ -352,8 +389,7 @@ class SenseStick:
 
     @direction_left.setter
     def direction_left(self, value):
-        self._callbacks[DIRECTION_LEFT] = self._wrap_callback(value)
-        self._start_stop_thread()
+        self._set_callback(DIRECTION_LEFT, value)
 
     @property
     def direction_right(self):
@@ -369,8 +405,7 @@ class SenseStick:
 
     @direction_right.setter
     def direction_right(self, value):
-        self._callbacks[DIRECTION_RIGHT] = self._wrap_callback(value)
-        self._start_stop_thread()
+        self._set_callback(DIRECTION_RIGHT, value)
 
     @property
     def direction_middle(self):
@@ -386,8 +421,7 @@ class SenseStick:
 
     @direction_middle.setter
     def direction_middle(self, value):
-        self._callbacks[DIRECTION_MIDDLE] = self._wrap_callback(value)
-        self._start_stop_thread()
+        self._set_callback(DIRECTION_MIDDLE, value)
 
     @property
     def direction_any(self):
@@ -404,8 +438,7 @@ class SenseStick:
 
     @direction_any.setter
     def direction_any(self, value):
-        self._callbacks['*'] = self._wrap_callback(value)
-        self._start_stop_thread()
+        self._set_callback('*', value)
 
 
 # Canonical direction-name → evdev key-code mapping, shared by the GUI and

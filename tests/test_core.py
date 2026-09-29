@@ -83,3 +83,68 @@ class TestEmulatorControllerBindFailure:
                 EmulatorController(simulate_imu=False, simulate_env=False)
         # Lock must be free afterwards so the next launch can acquire it
         assert EmulatorLock('check')._is_held() is False
+
+
+class TestEmulatorControllerCleanup:
+    """Any failure while building the controller - not just OSError - must
+    close what was already opened and release the lock (P0-4)."""
+
+    def test_unexpected_error_is_reraised_unchanged(self, emulator_patches):
+        with patch('sense_emu.core.HumidityServer',
+                   side_effect=ValueError('corrupt shared file')):
+            with pytest.raises(ValueError, match='corrupt shared file'):
+                EmulatorController(simulate_imu=False, simulate_env=False)
+
+    def test_unexpected_error_releases_lock(self, emulator_patches):
+        from sense_emu.lock import EmulatorLock
+        with patch('sense_emu.core.HumidityServer', side_effect=ValueError):
+            with pytest.raises(ValueError):
+                EmulatorController(simulate_imu=False, simulate_env=False)
+        assert EmulatorLock('check')._is_held() is False
+
+    def test_servers_opened_before_failure_are_closed(self, emulator_patches):
+        import struct
+        opened = []
+        from sense_emu import core
+        real_imu, real_pressure = core.IMUServer, core.PressureServer
+
+        def spy(real):
+            def factory(*args, **kwargs):
+                server = real(*args, **kwargs)
+                opened.append(server)
+                return server
+            return factory
+
+        with patch('sense_emu.core.IMUServer', side_effect=spy(real_imu)), \
+             patch('sense_emu.core.PressureServer', side_effect=spy(real_pressure)), \
+             patch('sense_emu.core.HumidityServer', side_effect=struct.error):
+            with pytest.raises(struct.error):
+                EmulatorController(simulate_imu=False, simulate_env=False)
+        assert len(opened) == 2
+        assert all(server._fd is None for server in opened)
+
+    def test_keyboard_interrupt_still_cleans_up(self, emulator_patches):
+        from sense_emu.lock import EmulatorLock
+        with patch('sense_emu.core.ScreenClient', side_effect=KeyboardInterrupt):
+            with pytest.raises(KeyboardInterrupt):
+                EmulatorController(simulate_imu=False, simulate_env=False)
+        assert EmulatorLock('check')._is_held() is False
+
+    def test_lock_failure_is_reported_as_runtimeerror(self, emulator_patches):
+        with patch('sense_emu.core.EmulatorLock') as lock_cls:
+            lock_cls.return_value.acquire.side_effect = FileExistsError
+            with pytest.raises(RuntimeError, match='Another process'):
+                EmulatorController(simulate_imu=False, simulate_env=False)
+
+    def test_close_continues_after_a_failing_subsystem(self, emulator):
+        real_close = emulator.imu.close
+        emulator.imu.close = MagicMock(side_effect=RuntimeError('boom'))
+        emulator.close()   # must not raise
+        assert emulator.pressure._fd is None
+        assert emulator.humidity._fd is None
+        assert emulator.lock.mine is False
+        real_close()       # release the real IMU file we bypassed
+
+    def test_close_is_idempotent(self, emulator):
+        emulator.close()
+        emulator.close()

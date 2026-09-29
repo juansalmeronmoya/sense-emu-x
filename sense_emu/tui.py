@@ -368,27 +368,54 @@ class SenseEmuTUI(App):
 
     # ── Input handlers ────────────────────────────────────────────────────────
 
+    _SENSOR_INPUT_IDS = ("pitch", "roll", "yaw", "pressure", "temp", "humidity")
+
+    def _replay_running(self):
+        player = getattr(self, "_player", None)
+        return player is not None and player.running
+
+    def _set_sensor_inputs_disabled(self, disabled):
+        for input_id in self._SENSOR_INPUT_IDS:
+            try:
+                self.query_one(f"#{input_id}", Input).disabled = disabled
+            except Exception:
+                pass    # widget not mounted (yet / any more)
+
+    def _write_imu(self):
+        pitch = float(self.query_one("#pitch").value)
+        roll  = float(self.query_one("#roll").value)
+        yaw   = float(self.query_one("#yaw").value)
+        self.controller.imu.set_orientation((roll, pitch, yaw))
+
+    def _write_env(self):
+        pressure = float(self.query_one("#pressure").value)
+        temp     = float(self.query_one("#temp").value)
+        humidity = float(self.query_one("#humidity").value)
+        self.controller.pressure.set_values(pressure, temp)
+        self.controller.humidity.set_values(humidity, temp)
+
+    def _apply_sensor_inputs(self):
+        """Make the emulator agree with what the input fields show."""
+        try:
+            self._write_imu()
+            self._write_env()
+        except ValueError:
+            pass
+
     def on_input_changed(self, event: Input.Changed) -> None:
         if not hasattr(self, "controller"):
             return
+        if self._replay_running():
+            return      # the replay is driving the sensors
         try:
             float(event.value)  # validate before reading other fields
         except ValueError:
             return
         try:
-            imu_ids = ("pitch", "roll", "yaw")
-            env_ids = ("pressure", "temp", "humidity")
-            if event.input.id in imu_ids:
-                pitch    = float(self.query_one("#pitch").value)
-                roll     = float(self.query_one("#roll").value)
-                yaw      = float(self.query_one("#yaw").value)
-                self.controller.imu.set_orientation((roll, pitch, yaw))
-            elif event.input.id in env_ids:
-                pressure = float(self.query_one("#pressure").value)
-                temp     = float(self.query_one("#temp").value)
-                humidity = float(self.query_one("#humidity").value)
-                self.controller.pressure.set_values(pressure, temp)
-                self.controller.humidity.set_values(humidity, temp)
+            if event.input.id in ("pitch", "roll", "yaw"):
+                self._write_imu()
+            elif event.input.id in ("pressure", "temp", "humidity"):
+                self._write_env()
         except ValueError:
             pass
 
@@ -491,6 +518,9 @@ class SenseEmuTUI(App):
         if self._player.total == 0:
             self._set_status("[yellow]Recording has no data[/yellow]")
             return
+        # The replay owns the sensor registers now; typing into these fields
+        # would make two writers fight over them
+        self._set_sensor_inputs_disabled(True)
         self._set_status("[cyan]Playing… 0%[/cyan]")
         self._playback_timer = self.set_interval(0.2, self._poll_playback)
 
@@ -504,6 +534,8 @@ class SenseEmuTUI(App):
             if self._playback_timer:
                 self._playback_timer.stop()
                 self._playback_timer = None
+            self._set_sensor_inputs_disabled(False)
+            self._apply_sensor_inputs()
             self._set_status("[green]Replay finished[/green]")
 
     def _on_recording_path(self, path):

@@ -869,3 +869,112 @@ class TestRecordingPathScreen:
         screen.dismiss = MagicMock()
         screen.action_cancel()
         screen.dismiss.assert_called_once_with(None)
+
+
+# ── P0-5: sensor inputs are locked while a replay drives the sensors ──────────
+
+class TestReplayLocksSensorInputs:
+    VALUES = {'pitch': '10', 'roll': '20', 'yaw': '30',
+              'pressure': '1000', 'temp': '25', 'humidity': '50'}
+
+    def _make_app(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()
+        app.controller = mock_controller
+        app._player = None
+        app._playback_timer = None
+        self.inputs = {}
+        for name, value in self.VALUES.items():
+            widget = MagicMock()
+            widget.value = value
+            widget.disabled = False
+            self.inputs[name] = widget
+        app.query_one = MagicMock(
+            side_effect=lambda selector, *a: self.inputs[selector.lstrip('#')])
+        app._set_status = MagicMock()
+        app.set_interval = MagicMock(return_value=MagicMock())
+        return app
+
+    def _start_replay(self, app, total=10, running=True):
+        player = MagicMock()
+        player.running = running
+        player.total = total
+        player.progress = 0.0
+        with patch('sense_emu.tui.Player', return_value=player):
+            app._on_replay_path('replay.bin')
+        return player
+
+    def test_replay_running_false_without_player(self, mock_controller):
+        from sense_emu.tui import SenseEmuTUI
+        app = SenseEmuTUI()          # no _player attribute at all yet
+        assert app._replay_running() is False
+
+    def test_all_inputs_disabled_during_replay(self, mock_controller):
+        app = self._make_app(mock_controller)
+        self._start_replay(app)
+        assert all(w.disabled is True for w in self.inputs.values())
+        assert set(self.inputs) == set(app._SENSOR_INPUT_IDS)
+
+    def test_input_changes_are_ignored_during_replay(self, mock_controller):
+        app = self._make_app(mock_controller)
+        self._start_replay(app)
+        for input_id in ('pitch', 'pressure'):
+            event = MagicMock()
+            event.input.id = input_id
+            event.value = '5'
+            app.on_input_changed(event)
+        mock_controller.imu.set_orientation.assert_not_called()
+        mock_controller.pressure.set_values.assert_not_called()
+        mock_controller.humidity.set_values.assert_not_called()
+
+    def test_input_changes_apply_when_not_replaying(self, mock_controller):
+        app = self._make_app(mock_controller)
+        event = MagicMock()
+        event.input.id = 'pitch'
+        event.value = '10'
+        app.on_input_changed(event)
+        mock_controller.imu.set_orientation.assert_called_once_with((20.0, 10.0, 30.0))
+
+    def test_inputs_unlocked_and_resynced_when_replay_ends(self, mock_controller):
+        app = self._make_app(mock_controller)
+        player = self._start_replay(app)
+        player.running = False
+        app._poll_playback()
+        assert all(w.disabled is False for w in self.inputs.values())
+        mock_controller.imu.set_orientation.assert_called_once_with((20.0, 10.0, 30.0))
+        mock_controller.pressure.set_values.assert_called_once_with(1000.0, 25.0)
+        mock_controller.humidity.set_values.assert_called_once_with(50.0, 25.0)
+
+    def test_inputs_stay_locked_while_replay_runs(self, mock_controller):
+        app = self._make_app(mock_controller)
+        player = self._start_replay(app)
+        player.progress = 0.5
+        app._poll_playback()
+        assert all(w.disabled is True for w in self.inputs.values())
+        mock_controller.imu.set_orientation.assert_not_called()
+
+    def test_resync_tolerates_unparsable_input(self, mock_controller):
+        app = self._make_app(mock_controller)
+        player = self._start_replay(app)
+        self.inputs['yaw'].value = 'abc'
+        player.running = False
+        app._poll_playback()            # must not raise
+        assert all(w.disabled is False for w in self.inputs.values())
+
+    def test_empty_recording_does_not_lock_inputs(self, mock_controller):
+        app = self._make_app(mock_controller)
+        self._start_replay(app, total=0)
+        assert all(w.disabled is False for w in self.inputs.values())
+
+    def test_failed_replay_does_not_lock_inputs(self, mock_controller):
+        app = self._make_app(mock_controller)
+        player = MagicMock()
+        player.play.side_effect = ValueError('bad file')
+        with patch('sense_emu.tui.Player', return_value=player):
+            app._on_replay_path('replay.bin')
+        assert all(w.disabled is False for w in self.inputs.values())
+
+    def test_missing_widgets_do_not_break_locking(self, mock_controller):
+        app = self._make_app(mock_controller)
+        app.query_one = MagicMock(side_effect=Exception('not mounted'))
+        app._set_sensor_inputs_disabled(True)      # must not raise

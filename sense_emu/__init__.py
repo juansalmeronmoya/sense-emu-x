@@ -36,7 +36,7 @@ from .stick import (
 # not the PyPI distribution name (sense-emu-x). All other packaging metadata
 # lives in pyproject.toml.
 __project__      = 'sense-emu'
-__version__      = '1.2.1'
+__version__      = '2.0.0.dev0'
 __author__       = 'Raspberry Pi Foundation'
 __author_email__ = 'info@raspberrypi.org'
 __url__          = 'https://github.com/juansalmeronmoya/sense-emu-x'

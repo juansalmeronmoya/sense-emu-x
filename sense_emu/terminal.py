@@ -106,7 +106,7 @@ class TerminalApplication:
     main body, and __init__() if they wish to extend the command line options.
     """
     # Get the default output encoding from the default locale
-    encoding = locale.getdefaultlocale()[1]
+    encoding = locale.getencoding()
 
     # This class is the abstract base class for each of the command line
     # utility classes defined. It provides some basic facilities like an option
