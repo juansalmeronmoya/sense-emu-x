@@ -2,7 +2,9 @@ import io
 import os
 import sys
 import mmap
+import shutil
 import struct
+import tempfile
 import time
 import socket
 import pytest
@@ -75,13 +77,35 @@ def tmp_lock_file(tmp_path):
 # Fixture: stick address in a temp dir so we don't collide
 # ---------------------------------------------------------------------------
 
+_SHORT_SOCKET_DIRS = []
+
+
+def _short_socket_dir():
+    """
+    AF_UNIX paths are limited to 104 bytes on macOS (108 on Linux) and pytest's
+    tmp_path there (/private/var/folders/.../pytest-of-runner/pytest-0/test_x0)
+    is longer than that, so sockets live in a short directory under /tmp.
+    """
+    path = tempfile.mkdtemp(prefix='senseemu-', dir='/tmp')
+    _SHORT_SOCKET_DIRS.append(path)
+    return path
+
+
+@pytest.fixture(scope='session', autouse=True)
+def _remove_short_socket_dirs():
+    yield
+    for path in _SHORT_SOCKET_DIRS:
+        shutil.rmtree(path, ignore_errors=True)
+
+
 def _make_stick_address(tmp_path):
     if sys.platform.startswith('win'):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.bind(('127.0.0.1', 0))
             port = s.getsockname()[1]
         return (socket.AF_INET, socket.SOCK_DGRAM, ('127.0.0.1', port))
-    return (socket.AF_UNIX, socket.SOCK_DGRAM, str(tmp_path / 'stick'))
+    return (socket.AF_UNIX, socket.SOCK_DGRAM,
+            os.path.join(_short_socket_dir(), 'stick'))
 
 
 @pytest.fixture

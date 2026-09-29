@@ -19,6 +19,7 @@
 import sys
 import os
 import io
+import math
 import mmap
 import time
 import errno
@@ -26,7 +27,7 @@ import subprocess
 from random import Random
 from struct import Struct
 from collections import namedtuple
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 
 import numpy as np
 
@@ -35,8 +36,18 @@ from .common import clamp
 
 # See LSM9DS1 data-sheet for details of register values
 ACCEL_FACTOR = 4081.6327
-GYRO_FACTOR = 57.142857
 COMPASS_FACTOR = 7142.8571
+
+# The gyroscope is configured for +/-500 dps, i.e. 17.5 mdps per LSB. The IMU
+# file holds raw LSB counts, but everything built on top of it - RTIMULib,
+# SenseHat.get_gyroscope_raw(), recordings made on a real HAT - works in
+# radians per second, so GYRO_FACTOR is LSB per *rad/s* (about 3274) and the
+# +/-500 dps full scale is GYRO_MAX rad/s (about 8.73).
+GYRO_LSB_PER_DPS = 57.142857
+GYRO_FACTOR = GYRO_LSB_PER_DPS * 180.0 / math.pi
+GYRO_MAX = math.radians(500.0)
+# Simulated gyro noise, in rad/s (equivalent to about 1 dps of jitter)
+GYRO_NOISE = math.radians(1.0)
 ORIENT_FACTOR = 5214.1892
 IMU_DATA = Struct(
     '@'   # native mode
@@ -97,19 +108,28 @@ def init_imu():
     return fd
 
 
-# Find the best available time-source for the timestamp() function. The best
-# source will preferably be monotonic, and high-resolution
-try:
-    _time = time.monotonic # 3.3+ (only guaranteed in 3.5+)
-except AttributeError:
-    _time = time.perf_counter # 3.3+
+# The time-source for timestamp() must be monotonic AND high-resolution.
+# time.perf_counter() is both everywhere; time.monotonic() is not: on Windows it
+# only ticks every ~15.6 ms, so two updates of the IMU inside one tick shared a
+# timestamp and readers (RTIMU.IMURead) concluded that nothing had changed.
+_time = time.perf_counter
+_last_timestamp = 0
+_timestamp_lock = Lock()
 
 def timestamp():
     """
     Returns a timestamp as an integer number of microseconds after some
     arbitrary basis (only comparisons of consecutive calls are meaningful).
+    Every call returns a strictly larger value than the one before, so a
+    reader that compares timestamps can always tell that data was rewritten.
     """
-    return int(_time() * 1000000)
+    global _last_timestamp
+    now = int(_time() * 1000000)
+    with _timestamp_lock:
+        if now <= _last_timestamp:
+            now = _last_timestamp + 1
+        _last_timestamp = now
+    return now
 
 
 # Some handy array definitions
@@ -274,8 +294,13 @@ class IMUServer:
             new_orientation = self._orientation
             time_delta = (now - then) / 1000000
             if time_delta >= 0.016:
-                # Gyro reading is simply the rate of change of the orientation
-                gyro = (new_orientation - orientation) / time_delta
+                # Gyro reading is simply the rate of change of the orientation.
+                # Orientation is in degrees but the gyro is reported in rad/s
+                # (like the real sensor), and angles wrap around at +/-180
+                # degrees so take the short way round: yaw going 179 -> -179 is
+                # a turn of 2 degrees, not -358.
+                delta = (new_orientation - orientation + 180.0) % 360.0 - 180.0
+                gyro = np.deg2rad(delta) / time_delta
                 # Construct a rotation matrix for the orientation; see
                 # https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
                 x, y, z = np.deg2rad(new_orientation)
@@ -289,7 +314,7 @@ class IMUServer:
                 accel = R.T.dot(self._gravity) # transpose for passive rotation
                 compass = R.T.dot(self._north)
                 then = now
-                position = new_position
+                position = new_position  # noqa: F841 (reserved for acceleration simulation)
                 orientation = new_orientation
             # XXX Simulate acceleration from position
             yield now, accel, gyro, compass
@@ -305,7 +330,7 @@ class IMUServer:
             now, accel, gyro, compass = next(self._world_iter)
             if self.simulate_world:
                 self._gyros[1:, :] = self._gyros[:-1, :]
-                self._gyros[0, :] = self._perturb(gyro, 1.0)
+                self._gyros[0, :] = self._perturb(gyro, GYRO_NOISE)
                 gyro = self._gyros.mean(axis=0)
                 self._accels[1:, :] = self._accels[:-1, :]
                 self._accels[0, :] = self._perturb(accel, 0.1)
@@ -325,9 +350,9 @@ class IMUServer:
                 int(clamp(self._accel[2], -8, 8) * ACCEL_FACTOR),
                 ),
             gyro=V(
-                int(clamp(self._gyro[0], -500, 500) * GYRO_FACTOR),
-                int(clamp(self._gyro[1], -500, 500) * GYRO_FACTOR),
-                int(clamp(self._gyro[2], -500, 500) * GYRO_FACTOR),
+                int(clamp(self._gyro[0], -GYRO_MAX, GYRO_MAX) * GYRO_FACTOR),
+                int(clamp(self._gyro[1], -GYRO_MAX, GYRO_MAX) * GYRO_FACTOR),
+                int(clamp(self._gyro[2], -GYRO_MAX, GYRO_MAX) * GYRO_FACTOR),
                 ),
             compass=V(
                 int(clamp(self._compass[0], -4, 4) * COMPASS_FACTOR),

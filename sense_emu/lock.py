@@ -20,9 +20,32 @@ import sys
 import os
 import io
 import errno
-from time import time, sleep
+import calendar
+import subprocess
+from time import time, sleep, strptime
 
 _LOCK_MAGIC = 'sense-emu-lock'
+
+
+def _ps_start_time(pid):
+    """
+    Start time of *pid* (seconds since the epoch, as an int) as reported by
+    ps(1), or ``None`` if it cannot be determined. Used where there is no
+    ``/proc`` (macOS, BSDs). The environment is pinned so that every process
+    computes the same token whatever its own locale or time zone: ps prints
+    ``lstart`` in local time and in the local language.
+    """
+    env = dict(os.environ, LC_ALL='C', TZ='UTC')
+    try:
+        out = subprocess.run(
+            ['ps', '-o', 'lstart=', '-p', str(pid)],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env,
+            timeout=5, text=True).stdout.strip()
+        # e.g. "Mon Sep  9 08:15:42 2026" (whitespace in the format matches
+        # any run of whitespace, so the padded day is fine)
+        return calendar.timegm(strptime(out, '%a %b %d %H:%M:%S %Y'))
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
 
 
 if sys.platform.startswith('win'):
@@ -101,14 +124,19 @@ else:
         else:
             return True
 
+    _HAVE_PROC = os.path.exists('/proc/self/stat')
+
     def process_start_time(pid):
         """
         Return an opaque, stable token identifying *when* *pid* started, or
-        ``None`` if it cannot be determined (e.g. on systems without
-        ``/proc``). Used to detect PID recycling.
+        ``None`` if it cannot be determined. Used to detect PID recycling.
+        Uses ``/proc`` where available and falls back to ps(1) elsewhere
+        (macOS).
         """
         if pid == 0:
             return None
+        if not _HAVE_PROC:
+            return _ps_start_time(pid)
         try:
             with io.open('/proc/%d/stat' % pid, 'rb') as f:
                 data = f.read()
@@ -143,9 +171,49 @@ def lock_filename():
             return os.path.join('/tmp', fname)
 
 
+# The emulator lock is arbitrated by the operating system: the process that
+# drives the emulation keeps the lock file open for its whole lifetime and holds
+# an exclusive, non-blocking advisory lock on it. The kernel drops that lock
+# when the process dies (however it dies), so there is no window in which two
+# emulators can both believe they own it and no need to guess whether a PID
+# file is stale. The PID / magic / start-time contents are kept purely as
+# information for readers (:meth:`EmulatorLock.wait`) and older versions.
+if sys.platform.startswith('win'):
+    import msvcrt
+
+    # Windows byte-range locks are mandatory: locking the first bytes would
+    # stop other processes *reading* the PID. Lock a byte far beyond the data.
+    _LOCK_OFFSET = 1 << 20
+
+    def _os_lock(fd):
+        """Take the exclusive lock on *fd*; raise OSError if already held."""
+        os.lseek(fd, _LOCK_OFFSET, os.SEEK_SET)
+        try:
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        finally:
+            os.lseek(fd, 0, os.SEEK_SET)
+
+    def _os_unlock(fd):
+        os.lseek(fd, _LOCK_OFFSET, os.SEEK_SET)
+        try:
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        finally:
+            os.lseek(fd, 0, os.SEEK_SET)
+else:
+    import fcntl
+
+    def _os_lock(fd):
+        """Take the exclusive lock on *fd*; raise OSError if already held."""
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def _os_unlock(fd):
+        fcntl.flock(fd, fcntl.LOCK_UN)
+
+
 class EmulatorLock:
     def __init__(self, name):
         self._filename = lock_filename()
+        self._fd = None
         self.name = name # XXX not currently used
 
     def __enter__(self):
@@ -155,21 +223,133 @@ class EmulatorLock:
     def __exit__(self, exc_type, exc_value, exc_tb):
         self.release()
 
+    def __del__(self):
+        # Never leave the lock held by an object nobody can release any more.
+        try:
+            self.release()
+        except Exception:
+            pass
+
     def acquire(self, timeout=None):
         """
         Acquire the emulator lock. This is expected to be called by anything
         wishing to drive the emulator's registers (sense_emu_gui and sense_play
         currently).
+
+        If another live process holds the lock, :exc:`FileExistsError` is
+        raised immediately (*timeout* is ``None``, the default) or once
+        *timeout* seconds have elapsed without the lock becoming free. A lock
+        left behind by a process that died is simply taken over: the operating
+        system released it when that process exited.
         """
-        if self._is_stale():
-            self._break_lock()
-        self._write_pid()
+        if self._fd is not None:
+            raise FileExistsError(
+                errno.EEXIST, 'this process already holds the emulator lock',
+                self._filename)
+        end = None if timeout is None else time() + timeout
+        while True:
+            try:
+                self._try_acquire()
+            except FileExistsError:
+                if end is None or time() >= end:
+                    raise
+                sleep(0.05)
+            else:
+                return
+
+    def _try_acquire(self):
+        for _ in range(10):
+            # O_BINARY: on Windows os.open() defaults to text mode, which would
+            # translate the newlines in the lock file
+            fd = os.open(
+                self._filename,
+                os.O_RDWR | os.O_CREAT | getattr(os, 'O_BINARY', 0), 0o666)
+            try:
+                _os_lock(fd)
+            except OSError as e:
+                os.close(fd)
+                if e.errno in (errno.EAGAIN, errno.EACCES, errno.EDEADLK,
+                               errno.EWOULDBLOCK):
+                    raise FileExistsError(
+                        errno.EEXIST,
+                        'the emulator lock is held by another process',
+                        self._filename)
+                raise
+            if not self._same_file(fd):
+                # The previous holder unlinked the file between our open() and
+                # lock(): we locked an orphan inode. Start again.
+                os.close(fd)
+                continue
+            if not self._legacy_holder_is_alive():
+                self._fd = fd
+                try:
+                    self._write_pid()
+                except BaseException:
+                    self._close_fd(unlink=False)
+                    raise
+                return
+            os.close(fd)
+            raise FileExistsError(
+                errno.EEXIST,
+                'the emulator lock is held by another process', self._filename)
+        raise FileExistsError(
+            errno.EEXIST, 'unable to acquire the emulator lock', self._filename)
+
+    def _same_file(self, fd):
+        if sys.platform.startswith('win'):
+            # Windows cannot unlink a file that is open, so the race above
+            # cannot happen
+            return True
+        try:
+            on_disk = os.stat(self._filename)
+        except FileNotFoundError:
+            return False
+        held = os.fstat(fd)
+        return (held.st_dev, held.st_ino) == (on_disk.st_dev, on_disk.st_ino)
+
+    def _legacy_holder_is_alive(self):
+        # Versions that predate the OS-level lock only wrote a PID file. If the
+        # file names a live process other than us, that process holds the lock
+        # even though the kernel cannot tell us so.
+        pid = self._read_pid()
+        return (
+            pid is not None and pid != os.getpid() and not self._is_stale())
 
     def release(self):
         """
-        Release the emulator lock (presumably after :meth:`acquire`).
+        Release the emulator lock (presumably after :meth:`acquire`). Does
+        nothing if this object does not hold the lock, so it can never remove
+        a lock that belongs to another process.
         """
-        self._break_lock()
+        if self._fd is not None:
+            self._close_fd(unlink=True)
+
+    def _close_fd(self, unlink):
+        fd, self._fd = self._fd, None
+        try:
+            if unlink:
+                # Empty the file first: if it cannot be unlinked below (Windows
+                # keeps files that another process has open), readers will see
+                # an invalid lock file instead of our still-running PID.
+                try:
+                    os.ftruncate(fd, 0)
+                except OSError:
+                    pass
+                if not sys.platform.startswith('win') and self._same_file(fd):
+                    # POSIX: unlink while still holding the lock so nobody can
+                    # lock the file we are deleting
+                    self._break_lock()
+        finally:
+            try:
+                _os_unlock(fd)
+            except OSError:
+                pass
+            os.close(fd)
+        if unlink and sys.platform.startswith('win'):
+            try:
+                self._break_lock()
+            except OSError:
+                pass  # another process has it open; harmless, file is empty
 
     def wait(self, timeout=None):
         """
@@ -196,9 +376,9 @@ class EmulatorLock:
     @property
     def mine(self):
         """
-        Returns True if the current process holds the lock.
+        Returns True if this object holds the lock.
         """
-        return self._read_pid() == os.getpid()
+        return self._fd is not None
 
     def _is_held(self):
         return os.path.exists(self._filename)
@@ -263,7 +443,11 @@ class EmulatorLock:
             return None
 
     def _write_pid(self):
+        # Record who holds the lock in the (already locked) lock file
         start = process_start_time(os.getpid())
-        with io.open(self._filename, 'x', encoding='ascii') as lockfile:
-            lockfile.write('%d\n%s\n%s\n' % (
-                os.getpid(), _LOCK_MAGIC, '' if start is None else start))
+        data = ('%d\n%s\n%s\n' % (
+            os.getpid(), _LOCK_MAGIC, '' if start is None else start
+        )).encode('ascii')
+        os.lseek(self._fd, 0, os.SEEK_SET)
+        os.write(self._fd, data)
+        os.ftruncate(self._fd, len(data))

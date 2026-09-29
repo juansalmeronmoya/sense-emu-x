@@ -2,6 +2,8 @@ import sys
 import time
 import struct
 import socket
+import logging
+import threading
 import pytest
 from unittest.mock import MagicMock, patch
 from sense_emu.stick import (
@@ -10,6 +12,58 @@ from sense_emu.stick import (
     ACTION_PRESSED, ACTION_RELEASED, ACTION_HELD,
     stick_address, STICK_KEYS, make_stick_event, rotate_key,
 )
+
+
+# ---------------------------------------------------------------------------
+# Helpers: a SenseStick wired to a real in-process socket pair (instead of a
+# MagicMock, which select() cannot poll), so the callback thread can be
+# exercised for real and always shut down
+# ---------------------------------------------------------------------------
+
+_created_sticks = []
+
+
+def _socket_stick():
+    try:
+        # Datagrams, like the real emulator socket (keeps message boundaries)
+        a, b = socket.socketpair(socket.AF_UNIX, socket.SOCK_DGRAM)
+    except (AttributeError, ValueError, OSError):    # e.g. Windows
+        a, b = socket.socketpair()
+    stick = SenseStick.__new__(SenseStick)
+    stick._callbacks = {}
+    stick._callback_thread = None
+    stick._callback_event = threading.Event()
+    stick._stick_file = a.makefile('rb', 0)
+    stick._sock, stick._peer = a, b
+    _created_sticks.append(stick)
+    return stick
+
+
+def _press(stick, direction=DIRECTION_UP, state=SenseStick.STATE_PRESS):
+    stick._peer.send(make_stick_event(STICK_KEYS[direction], state))
+
+
+def _wait_until(predicate, timeout=5.0):
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        if predicate():
+            return True
+        time.sleep(0.01)
+    return predicate()
+
+
+@pytest.fixture(autouse=True)
+def _close_sticks():
+    yield
+    while _created_sticks:
+        stick = _created_sticks.pop()
+        stick._callbacks.clear()
+        stick._start_stop_thread()
+        for closable in (stick._stick_file, stick._sock, stick._peer):
+            try:
+                closable.close()
+            except Exception:
+                pass
 
 
 class TestStickKeys:
@@ -208,13 +262,7 @@ class TestSenseStickRead:
 
 class TestSenseStickCallbacks:
     def _make_stick(self):
-        stick = SenseStick.__new__(SenseStick)
-        from threading import Event
-        stick._callbacks = {}
-        stick._callback_thread = None
-        stick._callback_event = Event()
-        stick._stick_file = MagicMock()
-        return stick
+        return _socket_stick()
 
     def test_direction_up_setter(self):
         stick = self._make_stick()
@@ -275,7 +323,9 @@ class TestSenseStickCallbacks:
         stick = self._make_stick()
         stick.direction_up = lambda: None
         stick.direction_up = None
-        assert stick._callbacks.get(DIRECTION_UP) is None
+        assert DIRECTION_UP not in stick._callbacks
+        # ... and with no callbacks left the thread must have been stopped
+        assert stick._callback_thread is None
 
     def test_close_clears_callbacks_and_file(self):
         stick = self._make_stick()
@@ -355,75 +405,49 @@ class TestSenseStickInit:
 
 class TestCallbackRun:
     def _make_stick(self):
-        stick = SenseStick.__new__(SenseStick)
-        from threading import Event
-        stick._callbacks = {}
-        stick._callback_thread = None
-        stick._callback_event = Event()
-        stick._stick_file = MagicMock()
-        return stick
+        return _socket_stick()
 
     def test_callback_run_fires_direction_callback(self):
-        """Cover _callback_run body (lines 265-273)."""
         stick = self._make_stick()
-        evt = InputEvent(1.0, DIRECTION_UP, ACTION_PRESSED)
         called = []
-        stick._callbacks[DIRECTION_UP] = lambda e: called.append(e)
 
-        call_count = [0]
-        def mock_read():
-            call_count[0] += 1
-            if call_count[0] == 1:
-                stick._callback_event.set()
-                return evt
-            return None
+        def handler(event):
+            called.append(event)
+            stick._callback_event.set()      # stop after the first event
 
-        stick._read = mock_read
+        stick._callbacks[DIRECTION_UP] = handler
+        _press(stick, DIRECTION_UP)
         stick._callback_run()
-        assert called == [evt]
+        assert [(e.direction, e.action) for e in called] == [
+            (DIRECTION_UP, ACTION_PRESSED)]
 
     def test_callback_run_fires_wildcard_callback(self):
-        """Cover _callback_run wildcard path (lines 271-273)."""
         stick = self._make_stick()
-        evt = InputEvent(1.0, DIRECTION_UP, ACTION_PRESSED)
         called = []
-        stick._callbacks['*'] = lambda e: called.append(e)
 
-        call_count = [0]
-        def mock_read():
-            call_count[0] += 1
-            if call_count[0] == 1:
-                stick._callback_event.set()
-                return evt
-            return None
+        def handler(event):
+            called.append(event)
+            stick._callback_event.set()
 
-        stick._read = mock_read
+        stick._callbacks['*'] = handler
+        _press(stick, DIRECTION_LEFT, SenseStick.STATE_RELEASE)
         stick._callback_run()
-        assert called == [evt]
+        assert [(e.direction, e.action) for e in called] == [
+            (DIRECTION_LEFT, ACTION_RELEASED)]
 
     def test_start_stop_thread_stop_path(self):
-        """Cover _start_stop_thread stop path (lines 260-262)."""
         stick = self._make_stick()
-
-        # Use a mock _callback_run that waits for the event
-        def waiting_run():
-            stick._callback_event.wait()
-
-        stick._callback_run = waiting_run
-
-        # Start thread by setting a callback
         stick.direction_up = lambda: None
-        import time as _time
-        _time.sleep(0.05)
         assert stick._callback_thread is not None
+        thread = stick._callback_thread
+        assert thread.is_alive()
 
-        # Stop thread by clearing all callbacks manually and calling _start_stop_thread
         stick._callbacks.clear()
         stick._start_stop_thread()
         assert stick._callback_thread is None
+        assert not thread.is_alive()
 
     def test_wait_for_event_emptybuffer(self):
-        """Cover wait_for_event emptybuffer path (lines 285-286)."""
         stick = self._make_stick()
         evt = InputEvent(1.0, DIRECTION_UP, ACTION_PRESSED)
         # First _wait(0) returns True (buffered event), second returns False (buffer empty), third returns True
@@ -440,7 +464,6 @@ class TestCallbackRun:
         assert result == evt
 
     def test_get_events_skips_none_event(self):
-        """Cover get_events branch where _read returns None (302->300)."""
         stick = self._make_stick()
         # First wait returns True with None event, second returns False
         wait_calls = iter([True, False])
@@ -454,6 +477,131 @@ class TestCallbackRun:
              patch.object(stick, '_read', return_value=None):
             result = stick.get_events()
         assert result == []
+
+
+class TestCallbackThreadRobustness:
+    """P0-3: the callback thread must survive bad callbacks and bad data, and
+    must be stoppable at any time."""
+
+    def test_exception_in_callback_does_not_kill_thread(self, caplog):
+        stick = _socket_stick()
+        seen = []
+
+        def flaky(event):
+            seen.append(event.action)
+            if len(seen) == 1:
+                raise RuntimeError('user code blew up')
+
+        stick._callbacks[DIRECTION_UP] = flaky
+        stick._start_stop_thread()
+        with caplog.at_level(logging.ERROR, logger='sense_emu.stick'):
+            _press(stick, DIRECTION_UP, SenseStick.STATE_PRESS)
+            _press(stick, DIRECTION_UP, SenseStick.STATE_RELEASE)
+            assert _wait_until(lambda: len(seen) == 2)
+        assert seen == [ACTION_PRESSED, ACTION_RELEASED]
+        assert stick._callback_thread.is_alive()
+        assert 'user code blew up' in caplog.text
+        assert 'Exception in joystick callback' in caplog.text
+
+    def test_failing_direction_callback_still_calls_wildcard(self, caplog):
+        stick = _socket_stick()
+        wild = []
+        stick._callbacks[DIRECTION_UP] = lambda e: 1 / 0
+        stick._callbacks['*'] = wild.append
+        stick._start_stop_thread()
+        with caplog.at_level(logging.ERROR, logger='sense_emu.stick'):
+            _press(stick, DIRECTION_UP)
+            assert _wait_until(lambda: len(wild) == 1)
+        assert stick._callback_thread.is_alive()
+
+    def test_malformed_datagram_does_not_kill_thread(self, caplog):
+        stick = _socket_stick()
+        if stick._sock.type != socket.SOCK_DGRAM:
+            pytest.skip('needs datagram sockets to keep message boundaries')
+        seen = []
+        stick._callbacks[DIRECTION_DOWN] = seen.append
+        stick._start_stop_thread()
+        with caplog.at_level(logging.ERROR, logger='sense_emu.stick'):
+            stick._peer.send(b'short')            # truncated event
+            _press(stick, DIRECTION_DOWN)
+            assert _wait_until(lambda: len(seen) == 1)
+        assert stick._callback_thread.is_alive()
+        assert 'Error reading joystick event' in caplog.text
+
+    def test_unknown_key_code_does_not_kill_thread(self, caplog):
+        stick = _socket_stick()
+        seen = []
+        stick._callbacks[DIRECTION_UP] = seen.append
+        stick._start_stop_thread()
+        with caplog.at_level(logging.ERROR, logger='sense_emu.stick'):
+            stick._peer.send(make_stick_event(999, SenseStick.STATE_PRESS))
+            _press(stick, DIRECTION_UP)
+            assert _wait_until(lambda: len(seen) == 1)
+        assert stick._callback_thread.is_alive()
+
+    def test_non_key_event_is_ignored(self):
+        stick = _socket_stick()
+        seen = []
+        stick._callbacks['*'] = seen.append
+        stick._start_stop_thread()
+        stick._peer.send(struct.pack(
+            SenseStick.EVENT_FORMAT, 1, 0, 0x02, 0, 0))   # EV_REL
+        _press(stick, DIRECTION_UP)
+        assert _wait_until(lambda: len(seen) == 1)
+        assert seen[0].direction == DIRECTION_UP
+
+    def test_stop_does_not_hang_when_no_events_arrive(self):
+        # Previously the thread sat in a blocking read() and join() waited for
+        # the next joystick event forever.
+        stick = _socket_stick()
+        stick.direction_up = lambda: None
+        assert stick._callback_thread.is_alive()
+        done = threading.Event()
+
+        def stop():
+            stick.close()
+            done.set()
+
+        threading.Thread(target=stop, daemon=True).start()
+        assert done.wait(5), 'close() hung waiting for the callback thread'
+        assert stick._stick_file is None
+
+    def test_callback_may_clear_its_own_handler(self, caplog):
+        stick = _socket_stick()
+        fired = threading.Event()
+
+        def once(event):
+            stick.direction_up = None      # joins the thread it is running on?
+            fired.set()
+
+        stick.direction_up = once
+        thread = stick._callback_thread
+        with caplog.at_level(logging.ERROR, logger='sense_emu.stick'):
+            _press(stick, DIRECTION_UP)
+            assert fired.wait(5)
+            thread.join(5)
+        assert not thread.is_alive()
+        assert stick._callback_thread is None
+        assert caplog.text == ''
+
+    def test_thread_stops_when_stick_file_is_closed(self):
+        stick = _socket_stick()
+        stick.direction_up = lambda: None
+        thread = stick._callback_thread
+        stick._stick_file.close()
+        thread.join(5)
+        assert not thread.is_alive()
+
+    def test_thread_can_be_restarted_after_stopping(self):
+        stick = _socket_stick()
+        seen = []
+        record = lambda event: seen.append(event)      # noqa: E731
+        stick.direction_up = record
+        stick.direction_up = None
+        assert stick._callback_thread is None
+        stick.direction_up = record
+        _press(stick, DIRECTION_UP)
+        assert _wait_until(lambda: len(seen) == 1)
 
 
 class TestStickServerServe:

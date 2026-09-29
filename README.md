@@ -107,7 +107,7 @@ sense-emu-x/
 │   ├── screen.py        # LED matrix
 │   ├── pyside_app.py    # GUI
 │   └── ...
-├── tests/               # Unit tests (427 tests ✅)
+├── tests/               # Unit tests
 ├── README.md            # This file
 ├── DEVELOPMENT.md       # Development guide
 └── setup.cfg            # Configuration
@@ -115,7 +115,7 @@ sense-emu-x/
 
 ## 🧪 Tests
 
-All tests pass with **91%+ coverage**:
+The suite runs on Linux, Windows and macOS in CI (see the CI badge for the current status):
 
 ```bash
 pytest                          # Run all tests
@@ -123,10 +123,7 @@ pytest tests/test_sense_hat.py  # Specific test
 pytest --cov=sense_emu          # With coverage report
 ```
 
-**Results:**
-- ✅ 427 tests passing
-- ✅ 1 test skipped (Unix-specific on Windows)
-- ✅ 91.67% code coverage
+Coverage must stay above the threshold configured in `setup.cfg` (`--cov-fail-under`).
 
 ## 🆘 Quick Troubleshooting
 
@@ -141,7 +138,7 @@ pytest --cov=sense_emu          # With coverage report
 
 ## 📦 Dependencies
 
-- **Python 3.8+**
+- **Python 3.11+**
 - **numpy** - Numerical processing
 - **Pillow** - Image processing
 - **PySide6** - GUI (included with `[gui]` installation)
@@ -158,9 +155,9 @@ Optional:
 
 ## 🔗 Useful Links
 
-- 📖 [Official documentation](https://sense-emu.readthedocs.io)
-- 🐛 [Bug reports](https://github.com/RPi-Distro/python-sense-emu/issues)
-- 📦 [PyPI](https://pypi.org/project/sense-emu/)
+- 📖 [Official documentation](https://github.com/juansalmeronmoya/sense-emu-x#readme)
+- 🐛 [Bug reports](https://github.com/juansalmeronmoya/sense-emu-x/issues)
+- 📦 [PyPI](https://pypi.org/project/sense-emu-x/)
 - 🏠 [Sense HAT hardware](https://www.raspberrypi.org/products/sense-hat/)
 
 ## 🤝 Contributing
@@ -224,4 +221,4 @@ hat.clear()
 
 **Need help?** → See the [Troubleshooting](#-quick-troubleshooting) section
 
-**Last updated:** 2026-06-07 | **Version:** 1.0.0 (Windows-compatible)
+**Version:** see `sense_emu.__version__` (single source of truth) | **Platforms:** Windows, Linux, macOS

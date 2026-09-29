@@ -16,7 +16,7 @@ Complete guide to install, use, and develop the Sense HAT emulator for Raspberry
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.11 or higher
 - pip (Python package manager)
 - Git (optional, for cloning the repository)
 
@@ -315,7 +315,7 @@ pytest --cov=sense_emu --cov-report=html
 ### Coverage Requirements
 
 - Minimum required: **85%**
-- Current threshold: **91%** ✅
+- Threshold is defined in `setup.cfg` (`--cov-fail-under`)
 
 ```bash
 # Verify it meets the requirement
@@ -384,9 +384,9 @@ pytest -m "not slow"
 
 ## 📚 Additional Resources
 
-- **Official documentation**: https://sense-emu.readthedocs.io
+- **Official documentation**: https://github.com/juansalmeronmoya/sense-emu-x#readme
 - **Sense HAT hardware**: https://www.raspberrypi.org/products/sense-hat/
-- **GitHub**: https://github.com/RPi-Distro/python-sense-emu
+- **GitHub**: https://github.com/juansalmeronmoya/sense-emu-x
 - **Examples**: See `sense_emu/examples/`
 
 ---
@@ -433,5 +433,5 @@ See file headers for specific details.
 ---
 
 **Last updated:** 2026-06-07
-**Python version:** 3.8+
+**Python version:** 3.11+
 **Supported platforms:** Windows, Linux, macOS

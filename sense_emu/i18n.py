@@ -29,7 +29,7 @@ def init_i18n(languages=None):
     try:
         # Use the user's default locale instead of C
         locale.setlocale(locale.LC_ALL, '')
-    except locale.Error as e:
+    except locale.Error:
         # If locale is not supported, use C which should at least provide
         # consistency. In this case, don't set a gettext domain to prevent
         # translation of strings
@@ -51,7 +51,7 @@ def init_i18n(languages=None):
                 else:
                     libintl.bindtextdomain(__project__, localedir)
                     libintl.textdomain(__project__)
-                    libintl.bind_textdomain_codeset(__project, 'UTF-8')
+                    libintl.bind_textdomain_codeset(__project__, 'UTF-8')
             else:
                 # We're on something else (Mac OS X most likely); no idea what
                 # to do here yet

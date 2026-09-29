@@ -1283,3 +1283,140 @@ class TestPysideMainFunction:
         mock_msgbox.warning.assert_called_once()
         mock_msgbox.critical.assert_not_called()
         mock_exit.assert_called_once_with(1)
+
+
+class TestReplayLocksSensorControls:
+    """P0-5: while a replay drives the sensors the sliders must be locked and
+    update_sensors() must not write; P1-4: closing stops every timer."""
+
+    def _make_window(self, qtbot, emulator, tmp_screen_file):
+        from sense_emu.pyside_app import SenseEmuDesktop
+        with patch('sense_emu.pyside_app.EmulatorController', return_value=emulator), \
+             patch.object(SenseEmuDesktop, '_use_emulator'):
+            window = SenseEmuDesktop()
+            qtbot.addWidget(window)
+        return window
+
+    def _start_replay(self, window, total=10, running=True):
+        player = MagicMock()
+        player.running = running
+        player.total = total
+        player.progress = 0.0
+        with patch('sense_emu.pyside_app.Player', return_value=player), \
+             patch('sense_emu.pyside_app.QFileDialog.getOpenFileName',
+                   return_value=('replay.bin', '')):
+            window._start_playback()
+        return player
+
+    def _all_enabled(self, window):
+        return [s.isEnabled() for s in window.sliders.values()]
+
+    def test_sliders_enabled_by_default(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        assert all(self._all_enabled(window))
+
+    def test_every_slider_is_disabled_during_replay(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        self._start_replay(window)
+        assert set(window.sliders) >= {
+            'Pitch', 'Roll', 'Yaw', 'Temperature', 'Pressure', 'Humidity'}
+        assert not any(self._all_enabled(window))
+        assert not window._playback_bar.isHidden()
+
+    def test_update_sensors_does_not_write_while_replaying(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        self._start_replay(window)
+        with patch.object(emulator.imu, 'set_orientation') as imu, \
+             patch.object(emulator.pressure, 'set_values') as pressure, \
+             patch.object(emulator.humidity, 'set_values') as humidity:
+            window.update_sensors()
+            # even a programmatic change of a (disabled) slider must be ignored
+            window.sliders['Pitch'].setValue(45)
+            window.sliders['Pressure'].setValue(1000)
+        imu.assert_not_called()
+        pressure.assert_not_called()
+        humidity.assert_not_called()
+
+    def test_update_sensors_writes_when_no_replay(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch.object(emulator.imu, 'set_orientation') as imu:
+            window.sliders['Pitch'].setValue(30)
+        imu.assert_called()
+
+    def test_sliders_unlocked_and_resynced_when_replay_ends(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        player = self._start_replay(window)
+        window.sliders['Roll'].setEnabled(False)
+        player.running = False
+        with patch.object(emulator.imu, 'set_orientation') as imu:
+            window._poll_playback()
+        assert all(self._all_enabled(window))
+        assert window._playback_bar.isHidden()
+        # the emulator is brought back in line with what the sliders show
+        imu.assert_called_once_with((
+            window.sliders['Roll'].value(),
+            window.sliders['Pitch'].value(),
+            window.sliders['Yaw'].value()))
+
+    def test_sliders_stay_locked_while_replay_still_running(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        player = self._start_replay(window)
+        player.progress = 0.4
+        window._poll_playback()
+        assert not any(self._all_enabled(window))
+        assert window._playback_progress.value() == 40
+
+    def test_stop_playback_unlocks_sliders(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        player = self._start_replay(window)
+        player.running = False        # what Player.stop() does
+        window._stop_playback()
+        player.stop.assert_called()
+        assert all(self._all_enabled(window))
+
+    def test_empty_recording_does_not_lock_sliders(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        with patch('sense_emu.pyside_app.QMessageBox.information'):
+            self._start_replay(window, total=0)
+        assert all(self._all_enabled(window))
+
+    def test_failed_replay_does_not_lock_sliders(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        player = MagicMock()
+        player.play.side_effect = ValueError('bad file')
+        with patch('sense_emu.pyside_app.Player', return_value=player), \
+             patch('sense_emu.pyside_app.QFileDialog.getOpenFileName',
+                   return_value=('replay.bin', '')), \
+             patch('sense_emu.pyside_app.QMessageBox.critical'):
+            window._start_playback()
+        assert all(self._all_enabled(window))
+
+    def test_finished_replay_only_resyncs_once(self, qtbot, emulator, tmp_screen_file):
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        player = self._start_replay(window)
+        player.running = False
+        with patch.object(emulator.imu, 'set_orientation') as imu:
+            window._poll_playback()
+            window._poll_playback()
+        assert imu.call_count == 1
+
+    def test_close_event_stops_every_timer(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtGui import QCloseEvent
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        window._hold_timer.start(250)
+        window._playback_poll.start()
+        window._rec_poll.start()
+        timers = (window.matrix.timer, window._hold_timer, window._playback_poll,
+                  window._rec_poll, window.telemetry._timer)
+        assert window.matrix.timer.isActive()
+        window.closeEvent(QCloseEvent())
+        assert [t.isActive() for t in timers] == [False] * len(timers)
+
+    def test_timers_are_stopped_before_controller_is_closed(self, qtbot, emulator, tmp_screen_file):
+        from PySide6.QtGui import QCloseEvent
+        window = self._make_window(qtbot, emulator, tmp_screen_file)
+        seen = []
+        with patch.object(emulator, 'close',
+                          side_effect=lambda: seen.append(window.matrix.timer.isActive())):
+            window.closeEvent(QCloseEvent())
+        assert seen == [False]

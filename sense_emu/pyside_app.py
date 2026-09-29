@@ -910,14 +910,16 @@ class SenseEmuDesktop(QMainWindow):
         if self._player.total == 0:
             QMessageBox.information(self, 'Replay', 'Recording contains no data.')
             return
+        # The replay owns the sensor registers now: if the sliders stayed live,
+        # update_sensors() and the player thread would write to them at once
+        self._set_sensor_sliders_enabled(False)
         self._playback_bar.setVisible(True)
         self._playback_poll.start()
 
     def _stop_playback(self):
         if self._player:
             self._player.stop()
-        self._playback_poll.stop()
-        self._playback_bar.setVisible(False)
+        self._end_playback_ui()
 
     def _poll_playback(self):
         if self._player is None:
@@ -925,8 +927,26 @@ class SenseEmuDesktop(QMainWindow):
         pct = int(self._player.progress * 100)
         self._playback_progress.setValue(pct)
         if not self._player.running:
-            self._playback_poll.stop()
-            self._playback_bar.setVisible(False)
+            self._end_playback_ui()
+
+    def _end_playback_ui(self):
+        self._playback_poll.stop()
+        self._playback_bar.setVisible(False)
+        if not self._sensor_sliders_enabled():
+            self._set_sensor_sliders_enabled(True)
+            # The sliders show what the user last asked for; make the emulator
+            # agree with them again instead of keeping the recording's last frame
+            self.update_sensors()
+
+    def _replay_running(self):
+        return self._player is not None and self._player.running
+
+    def _sensor_sliders_enabled(self):
+        return all(slider.isEnabled() for slider in self.sliders.values())
+
+    def _set_sensor_sliders_enabled(self, enabled):
+        for slider in self.sliders.values():
+            slider.setEnabled(enabled)
 
     # ── Recording ─────────────────────────────────────────────────────────────
 
@@ -1001,6 +1021,8 @@ class SenseEmuDesktop(QMainWindow):
         self._hold_timer.setInterval(100)
 
     def update_sensors(self):
+        if self._replay_running():
+            return      # the replay is driving the sensors
         pitch    = self.sliders["Pitch"].value()
         roll     = self.sliders["Roll"].value()
         yaw      = self.sliders["Yaw"].value()
@@ -1059,7 +1081,10 @@ class SenseEmuDesktop(QMainWindow):
         if self._screen_writer is not None:
             self._screen_writer.close()
             self._screen_writer = None
-        self.telemetry._timer.stop()
+        # No timer may fire after the controller (and its mmaps) is closed
+        for timer in (self.matrix.timer, self._hold_timer, self._playback_poll,
+                      self._rec_poll, self.telemetry._timer):
+            timer.stop()
         self.controller.close()
         super().closeEvent(event)
 
@@ -1068,7 +1093,7 @@ def main():
     app = QApplication(sys.argv)
     try:
         window = SenseEmuDesktop()
-    except RuntimeError as e:
+    except RuntimeError:
         QMessageBox.warning(
             None, 'Sense HAT Emulator — Already running',
             'Another instance of the Sense HAT emulator is already running.\n\n'

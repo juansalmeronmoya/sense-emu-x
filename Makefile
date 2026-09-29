@@ -17,8 +17,13 @@ RTIMULIB:=$(wildcard /usr/lib/python3/dist-packages/RTIMU.*)
 
 # Calculate the base names of the distribution, the location of all source,
 # documentation, packaging, icon, and executable script files
+# NAME is the PyPI distribution name (sense-emu-x); PKG_DIR is the importable
+# package directory (sense_emu); DOMAIN is the gettext domain used by the
+# translation catalogues (see __project__ in sense_emu/__init__.py).
 NAME:=$(shell $(PYTHON) $(PYFLAGS) setup.py --name)
 WHEEL_NAME:=$(subst -,_,$(NAME))
+PKG_DIR=sense_emu
+DOMAIN=sense-emu
 VER:=$(shell $(PYTHON) $(PYFLAGS) setup.py --version)
 PY_SOURCES:=$(shell \
 	$(PYTHON) $(PYFLAGS) setup.py egg_info >/dev/null 2>&1 && \
@@ -38,9 +43,9 @@ DIST_WHEEL=dist/$(WHEEL_NAME)-$(VER)-py3-none-any.whl
 DIST_TAR=dist/$(NAME)-$(VER).tar.gz
 DIST_ZIP=dist/$(NAME)-$(VER).zip
 MAN_PAGES=man/sense_rec.1 man/sense_play.1 man/sense_csv.1
-POT_FILE=$(WHEEL_NAME)/locale/$(NAME).pot
-PO_FILES:=$(wildcard $(WHEEL_NAME)/locale/*.po)
-MO_FILES:=$(patsubst $(WHEEL_NAME)/locale/%.po,$(WHEEL_NAME)/locale/%/LC_MESSAGES/$(NAME).mo,$(PO_FILES))
+POT_FILE=$(PKG_DIR)/locale/$(DOMAIN).pot
+PO_FILES:=$(wildcard $(PKG_DIR)/locale/*.po)
+MO_FILES:=$(patsubst $(PKG_DIR)/locale/%.po,$(PKG_DIR)/locale/%/LC_MESSAGES/$(DOMAIN).mo,$(PO_FILES))
 
 
 # Default target
@@ -113,7 +118,7 @@ tags: $(PY_SOURCES)
 	ctags -R --exclude="build/*" --exclude="docs/*" --languages="Python"
 
 lint: $(PY_SOURCES)
-	pylint $(WHEEL_NAME)
+	ruff check .
 
 $(SUBDIRS):
 	$(MAKE) -C $@
@@ -131,7 +136,7 @@ $(PO_FILES): $(POT_FILE)
 
 $(MO_FILES): $(PO_FILES)
 	mkdir -p $(dir $@)
-	$(MSGFMT) $(patsubst $(WHEEL_NAME)/locale/%/LC_MESSAGES/$(NAME).mo,$(WHEEL_NAME)/locale/%.po,$@) -o $@
+	$(MSGFMT) $(patsubst $(PKG_DIR)/locale/%/LC_MESSAGES/$(DOMAIN).mo,$(PKG_DIR)/locale/%.po,$@) -o $@
 
 $(DIST_TAR): $(PY_SOURCES) $(MO_FILES) $(SUBDIRS)
 	$(PYTHON) $(PYFLAGS) setup.py sdist --formats gztar

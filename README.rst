@@ -4,8 +4,8 @@
 Sense HAT Emulator
 ==================
 
-This package emulates the Raspberry Pi `Sense HAT`_. An interactive GTK
-application is provided to permit manipulation of the emulated sensors, along
+This package emulates the Raspberry Pi `Sense HAT`_. An interactive Qt
+(PySide6) application and a terminal (Textual) interface are provided to permit manipulation of the emulated sensors, along
 with command line utilities for recording and playing back sensor readings from
 an actual HAT.
 
@@ -23,10 +23,10 @@ Links
   instructions is likely to be more useful
 
 .. _Sense HAT: https://www.raspberrypi.org/products/sense-hat/
-.. _source code: https://github.com/RPi-Distro/python-sense-emu
-.. _bug tracker: https://github.com/RPi-Distro/python-sense-emu/issues
-.. _documentation: https://sense-emu.readthedocs.io
-.. _PyPI: https://pypi.python.org/pypi/sense_emu/
+.. _source code: https://github.com/juansalmeronmoya/sense-emu-x
+.. _bug tracker: https://github.com/juansalmeronmoya/sense-emu-x/issues
+.. _documentation: https://github.com/juansalmeronmoya/sense-emu-x#readme
+.. _PyPI: https://pypi.org/project/sense-emu-x/
 .. _LGPL version 2.1: https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html
 .. _GPL version 2.0: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 

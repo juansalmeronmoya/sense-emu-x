@@ -134,12 +134,12 @@ class TestEmulatorLock:
 
     def test_write_pid_creates_file(self, tmp_lock_file):
         lock = EmulatorLock('test')
-        lock._write_pid()
+        lock.acquire()
         assert os.path.exists(tmp_lock_file)
         with open(tmp_lock_file) as f:
             assert int(f.readline().strip()) == os.getpid()
             assert f.readline().strip() == _LOCK_MAGIC
-        os.unlink(tmp_lock_file)
+        lock.release()
 
 
 class TestLockFilenameWindows:
@@ -239,13 +239,16 @@ class TestProcessStartTime:
         assert process_start_time(os.getpid()) == process_start_time(os.getpid())
 
 
+@pytest.mark.skipif(
+    process_start_time(os.getpid()) is None,
+    reason='process start time is not available on this platform')
 class TestRecycledPidStartTime:
     """A lock whose PID is *alive* but belongs to a different process (recycled
     PID) must be detected as stale via the recorded process start time."""
 
     def test_write_pid_records_start_time(self, tmp_lock_file):
         lock = EmulatorLock('test')
-        lock._write_pid()
+        lock.acquire()
         with open(tmp_lock_file) as f:
             assert int(f.readline().strip()) == os.getpid()
             assert f.readline().strip() == _LOCK_MAGIC
@@ -254,7 +257,7 @@ class TestRecycledPidStartTime:
 
     def test_read_start_time_roundtrip(self, tmp_lock_file):
         lock = EmulatorLock('test')
-        lock._write_pid()
+        lock.acquire()
         assert lock._read_start_time() == process_start_time(os.getpid())
         lock.release()
 
@@ -304,3 +307,372 @@ class TestRecycledPidStartTime:
             f.write('%d\n%s\n%d\n' % (os.getpid(), _LOCK_MAGIC, 1))
         lock = EmulatorLock('test')
         assert lock.wait(timeout=0.2) is False
+
+
+# ---------------------------------------------------------------------------
+# OS-arbitrated locking (regression tests for the TOCTOU race and for release()
+# deleting a lock that belongs to somebody else)
+# ---------------------------------------------------------------------------
+
+import subprocess
+import textwrap
+
+
+def _spawn_holder(lock_path, mode='hold'):
+    """
+    Start a child Python process that acquires the emulator lock (with
+    lock_filename() pointed at *lock_path*) and then, depending on *mode*,
+    waits for stdin to close ('hold') or dies without cleaning up ('crash').
+    Returns the Popen once the child reports that it holds the lock.
+    """
+    code = textwrap.dedent("""
+        import os, sys
+        from unittest.mock import patch
+        from sense_emu.lock import EmulatorLock
+        with patch('sense_emu.lock.lock_filename', return_value=sys.argv[1]):
+            lock = EmulatorLock('child')
+            lock.acquire()
+            print('locked', flush=True)
+            if sys.argv[2] == 'crash':
+                os._exit(0)    # no release(), no atexit, no __del__
+            sys.stdin.read()
+    """)
+    child = subprocess.Popen(
+        [sys.executable, '-c', code, lock_path, mode],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    assert child.stdout.readline().strip() == 'locked'
+    return child
+
+
+def _reap(child):
+    """Close a child's pipes and wait for it to exit."""
+    for pipe in (child.stdin, child.stdout):
+        if pipe is not None:
+            try:
+                pipe.close()
+            except OSError:
+                pass
+    child.wait()
+
+
+class TestOSArbitratedLock:
+    def test_second_acquire_in_same_process_fails(self, tmp_lock_file):
+        first = EmulatorLock('one')
+        second = EmulatorLock('two')
+        first.acquire()
+        try:
+            with pytest.raises(FileExistsError):
+                second.acquire()
+            assert second.mine is False
+        finally:
+            first.release()
+
+    def test_acquire_twice_on_same_object_fails(self, tmp_lock_file):
+        lock = EmulatorLock('one')
+        lock.acquire()
+        try:
+            with pytest.raises(FileExistsError):
+                lock.acquire()
+            assert lock.mine is True
+        finally:
+            lock.release()
+
+    def test_failed_acquire_leaves_holder_untouched(self, tmp_lock_file):
+        first = EmulatorLock('one')
+        first.acquire()
+        try:
+            with open(tmp_lock_file) as f:
+                before = f.read()
+            with pytest.raises(FileExistsError):
+                EmulatorLock('two').acquire()
+            with open(tmp_lock_file) as f:
+                assert f.read() == before
+        finally:
+            first.release()
+
+    def test_lock_file_content_is_exact(self, tmp_lock_file):
+        # Guards against newline translation (text-mode fd on Windows)
+        lock = EmulatorLock('one')
+        lock.acquire()
+        try:
+            with open(tmp_lock_file, 'rb') as f:
+                raw = f.read()
+            start = process_start_time(os.getpid())
+            expected = ('%d\n%s\n%s\n' % (
+                os.getpid(), _LOCK_MAGIC, '' if start is None else start)).encode('ascii')
+            assert raw == expected
+            assert b'\r' not in raw
+        finally:
+            lock.release()
+
+    def test_release_never_removes_a_foreign_lock(self, tmp_lock_file):
+        # A lock file written by someone else (e.g. an older version) must
+        # survive release() on an object that never acquired it.
+        with open(tmp_lock_file, 'w') as f:
+            f.write('%d\n%s\n' % (os.getpid(), _LOCK_MAGIC))
+        EmulatorLock('bystander').release()
+        assert os.path.exists(tmp_lock_file)
+
+    def test_release_is_idempotent(self, tmp_lock_file):
+        lock = EmulatorLock('one')
+        lock.acquire()
+        lock.release()
+        lock.release()
+        assert not os.path.exists(tmp_lock_file)
+
+    def test_reacquire_after_release(self, tmp_lock_file):
+        lock = EmulatorLock('one')
+        lock.acquire()
+        lock.release()
+        lock.acquire()
+        assert lock.mine is True
+        lock.release()
+
+    def test_acquire_timeout_waits_for_release(self, tmp_lock_file):
+        import threading
+        first = EmulatorLock('one')
+        first.acquire()
+        threading.Timer(0.3, first.release).start()
+        second = EmulatorLock('two')
+        start = time.monotonic()
+        second.acquire(timeout=5)
+        assert 0.2 < time.monotonic() - start < 4
+        second.release()
+
+    def test_acquire_timeout_expires(self, tmp_lock_file):
+        first = EmulatorLock('one')
+        first.acquire()
+        try:
+            start = time.monotonic()
+            with pytest.raises(FileExistsError):
+                EmulatorLock('two').acquire(timeout=0.2)
+            assert time.monotonic() - start >= 0.2
+        finally:
+            first.release()
+
+    def test_garbage_collected_lock_is_released(self, tmp_lock_file):
+        import gc
+        lock = EmulatorLock('one')
+        lock.acquire()
+        del lock
+        gc.collect()
+        again = EmulatorLock('two')
+        again.acquire()
+        again.release()
+
+    @pytest.mark.skipif(sys.platform.startswith('win'),
+                        reason='Windows cannot unlink a file that is open')
+    def test_orphan_inode_is_retried(self, tmp_lock_file):
+        # If the previous holder unlinks the file between our open() and
+        # lock(), we hold a lock on a deleted inode. acquire() must notice and
+        # start again rather than report success.
+        lock = EmulatorLock('one')
+        real = lock._same_file
+        calls = []
+
+        def flaky(fd):
+            calls.append(fd)
+            if len(calls) == 1:
+                os.unlink(tmp_lock_file)   # holder released behind our back
+                return real(fd)            # -> False on POSIX
+            return real(fd)
+
+        with patch.object(lock, '_same_file', side_effect=flaky):
+            lock.acquire()
+        try:
+            assert lock.mine is True
+            assert os.path.exists(tmp_lock_file)
+            if not sys.platform.startswith('win'):
+                assert len(calls) >= 2
+        finally:
+            lock.release()
+
+    def test_outdated_stale_verdict_cannot_steal_live_lock(self, tmp_lock_file):
+        # The TOCTOU race, made deterministic: B decided the lock was stale
+        # (holder dead) and, before B acts, A acquires it. With the old
+        # "check staleness, delete, recreate" protocol B would delete A's live
+        # lock and write its own -> two emulators. With an OS-level lock the
+        # stale verdict is irrelevant.
+        holder = EmulatorLock('A')
+        holder.acquire()
+        try:
+            intruder = EmulatorLock('B')
+            with patch.object(EmulatorLock, '_is_stale', return_value=True), \
+                 patch('sense_emu.lock.pid_exists', return_value=False):
+                with pytest.raises(FileExistsError):
+                    intruder.acquire()
+            assert intruder.mine is False
+            assert holder.mine is True
+            with open(tmp_lock_file) as f:
+                assert int(f.readline()) == os.getpid()
+        finally:
+            holder.release()
+
+    def test_live_legacy_holder_blocks_acquire(self, tmp_lock_file):
+        # An older version (PID file only, no OS lock) that is still running
+        # must not be trampled.
+        child = subprocess.Popen(
+            [sys.executable, '-c', 'import sys; sys.stdin.read()'],
+            stdin=subprocess.PIPE)
+        try:
+            start = process_start_time(child.pid)
+            with open(tmp_lock_file, 'w') as f:
+                f.write('%d\n%s\n%s\n' % (
+                    child.pid, _LOCK_MAGIC, '' if start is None else start))
+            with pytest.raises(FileExistsError):
+                EmulatorLock('one').acquire()
+        finally:
+            _reap(child)
+
+    def test_other_process_holding_lock_blocks_acquire(self, tmp_lock_file):
+        child = _spawn_holder(tmp_lock_file)
+        try:
+            with pytest.raises(FileExistsError):
+                EmulatorLock('one').acquire()
+            # ... and readers see a live emulator
+            assert EmulatorLock('reader').wait(timeout=1) is True
+        finally:
+            _reap(child)
+
+    def test_lock_is_free_once_holder_exits_cleanly(self, tmp_lock_file):
+        child = _spawn_holder(tmp_lock_file)
+        _reap(child)
+        lock = EmulatorLock('one')
+        lock.acquire()
+        lock.release()
+
+    def test_lock_of_crashed_holder_is_taken_over(self, tmp_lock_file):
+        # The holder dies without release(): the file is left behind naming a
+        # dead PID, but the OS has dropped the lock, so we can take it.
+        child = _spawn_holder(tmp_lock_file, mode='crash')
+        _reap(child)
+        assert os.path.exists(tmp_lock_file)
+        lock = EmulatorLock('one')
+        lock.acquire()
+        assert lock.mine is True
+        lock.release()
+
+    def test_concurrent_acquire_has_exactly_one_winner(self, tmp_lock_file):
+        # Many processes race for a lock left behind by a crashed holder (the
+        # scenario that used to let two emulators run at once).
+        crashed = _spawn_holder(tmp_lock_file, mode='crash')
+        _reap(crashed)
+        code = textwrap.dedent("""
+            import sys, time
+            from unittest.mock import patch
+            from sense_emu.lock import EmulatorLock
+            with patch('sense_emu.lock.lock_filename', return_value=sys.argv[1]):
+                lock = EmulatorLock('racer')
+                start_at = float(sys.argv[2])
+                while time.time() < start_at:     # spin: near-simultaneous start
+                    pass
+                try:
+                    lock.acquire()
+                except FileExistsError:
+                    print('lost', flush=True)
+                else:
+                    print('won', flush=True)
+                    time.sleep(2)                 # keep holding while others try
+        """)
+        start_at = time.time() + 2.0
+        racers = [
+            subprocess.Popen([sys.executable, '-c', code, tmp_lock_file,
+                              repr(start_at)],
+                             stdout=subprocess.PIPE, text=True)
+            for _ in range(8)]
+        try:
+            results = [r.stdout.readline().strip() for r in racers]
+        finally:
+            for r in racers:
+                _reap(r)
+        assert results.count('won') == 1, results
+        assert results.count('lost') == 7, results
+
+
+# ---------------------------------------------------------------------------
+# Start time without /proc (macOS): ps(1) fallback
+# ---------------------------------------------------------------------------
+
+from sense_emu import lock as _lock_module                     # noqa: E402
+from sense_emu.lock import _ps_start_time                      # noqa: E402
+
+
+class _PsResult:
+    def __init__(self, stdout):
+        self.stdout = stdout
+
+
+class TestPsStartTime:
+    def test_parses_ps_output(self):
+        with patch('subprocess.run', return_value=_PsResult('Mon Sep 28 01:12:00 2026\n')):
+            assert _ps_start_time(123) == 1_790_557_920   # 2026-09-28T01:12:00Z
+
+    def test_parses_space_padded_day(self):
+        with patch('subprocess.run', return_value=_PsResult('Wed Sep  9 08:15:42 2026\n')):
+            assert _ps_start_time(123) == 1_788_941_742   # 2026-09-09T08:15:42Z
+
+    def test_environment_is_pinned(self):
+        # ps prints lstart in local time and language: every process must ask
+        # the same question or the tokens would never compare equal
+        with patch('subprocess.run', return_value=_PsResult('')) as run:
+            _ps_start_time(123)
+        env = run.call_args.kwargs['env']
+        assert env['TZ'] == 'UTC'
+        assert env['LC_ALL'] == 'C'
+        assert run.call_args.args[0][-2:] == ['-p', '123']
+
+    @pytest.mark.parametrize('output', ['', 'garbage', 'Mon Sep 28'])
+    def test_unparsable_output_gives_none(self, output):
+        with patch('subprocess.run', return_value=_PsResult(output)):
+            assert _ps_start_time(123) is None
+
+    def test_missing_ps_gives_none(self):
+        with patch('subprocess.run', side_effect=FileNotFoundError('ps')):
+            assert _ps_start_time(123) is None
+
+    def test_ps_timeout_gives_none(self):
+        import subprocess as sp
+        with patch('subprocess.run', side_effect=sp.TimeoutExpired('ps', 5)):
+            assert _ps_start_time(123) is None
+
+    @pytest.mark.skipif(sys.platform.startswith('win') or not os.path.exists('/bin/ps')
+                        and not os.path.exists('/usr/bin/ps'),
+                        reason='needs a POSIX ps')
+    def test_real_ps_for_this_process_is_stable(self):
+        first = _ps_start_time(os.getpid())
+        assert isinstance(first, int) and first > 1_600_000_000
+        assert _ps_start_time(os.getpid()) == first
+
+    @pytest.mark.skipif(sys.platform.startswith('win'), reason='POSIX only')
+    def test_real_ps_for_dead_process_is_none(self):
+        assert _ps_start_time(999_999_999) is None
+
+    @pytest.mark.skipif(sys.platform.startswith('win'), reason='POSIX only')
+    def test_process_start_time_falls_back_to_ps_without_proc(self):
+        with patch.object(_lock_module, '_HAVE_PROC', False), \
+             patch.object(_lock_module, '_ps_start_time', return_value=42) as ps:
+            assert process_start_time(os.getpid()) == 42
+        ps.assert_called_once_with(os.getpid())
+
+    @pytest.mark.skipif(sys.platform.startswith('win'), reason='POSIX only')
+    def test_process_start_time_pid_zero_never_calls_ps(self):
+        with patch.object(_lock_module, '_HAVE_PROC', False), \
+             patch.object(_lock_module, '_ps_start_time') as ps:
+            assert process_start_time(0) is None
+        ps.assert_not_called()
+
+    @pytest.mark.skipif(sys.platform.startswith('win'), reason='POSIX only')
+    def test_lock_works_when_start_time_is_unavailable(self, tmp_lock_file):
+        # A platform where neither /proc nor ps can tell us the start time
+        # must still lock correctly (the field is simply left empty)
+        with patch.object(_lock_module, 'process_start_time', return_value=None):
+            lock = EmulatorLock('one')
+            lock.acquire()
+            try:
+                assert lock.mine is True
+                assert lock._read_pid() == os.getpid()
+                assert lock._read_start_time() is None
+                with pytest.raises(FileExistsError):
+                    EmulatorLock('two').acquire()
+            finally:
+                lock.release()

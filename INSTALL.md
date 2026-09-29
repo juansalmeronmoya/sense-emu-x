@@ -4,8 +4,8 @@ Detailed installation instructions for **Windows**, **Linux**, and **macOS**.
 
 ## 📋 Prerequisites (All Platforms)
 
-- **Python 3.8 or higher** ([Download](https://www.python.org/downloads/))
-- **pip** (included with Python 3.4+)
+- **Python 3.11 or higher** ([Download](https://www.python.org/downloads/))
+- **pip** (included with Python)
 - Access to a terminal/PowerShell
 - ~500 MB of disk space
 
@@ -16,7 +16,7 @@ python --version
 pip --version
 ```
 
-If you see versions lower than 3.8, update Python.
+If you see a version lower than 3.11, update Python.
 
 ---
 
@@ -27,8 +27,8 @@ If you see versions lower than 3.8, update Python.
 **Option A: With Git**
 
 ```bash
-git clone https://github.com/RPi-Distro/python-sense-emu
-cd python-sense-emu
+git clone https://github.com/juansalmeronmoya/sense-emu-x
+cd sense-emu-x
 ```
 
 **Option B: Without Git**
@@ -96,8 +96,8 @@ sudo apt-get install python3 python3-pip python3-venv
 ### Step 2: Clone repository
 
 ```bash
-git clone https://github.com/RPi-Distro/python-sense-emu
-cd python-sense-emu
+git clone https://github.com/juansalmeronmoya/sense-emu-x
+cd sense-emu-x
 ```
 
 ### Step 3: Create virtual environment
@@ -151,8 +151,8 @@ brew install python3
 ### Step 3: Clone repository
 
 ```bash
-git clone https://github.com/RPi-Distro/python-sense-emu
-cd python-sense-emu
+git clone https://github.com/juansalmeronmoya/sense-emu-x
+cd sense-emu-x
 ```
 
 ### Step 4: Create virtual environment
@@ -255,7 +255,7 @@ After installation, run this to verify everything:
 python --version
 
 # 2. Verify pip
-pip list | grep sense-emu
+pip list | grep sense-emu-x
 
 # 3. Run tests
 pytest
@@ -279,7 +279,7 @@ source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 
 # Update
-pip install --upgrade sense-emu
+pip install --upgrade sense-emu-x
 ```
 
 ---
@@ -292,7 +292,7 @@ deactivate  # Deactivate virtual environment
 # Then delete the venv/ folder
 
 # Option 2: Complete uninstall
-pip uninstall sense-emu
+pip uninstall sense-emu-x
 ```
 
 ---
@@ -303,7 +303,7 @@ After installation:
 
 1. **Learn the basics**: Read [README.md](README.md)
 2. **Try examples**: See `sense_emu/examples/`
-3. **Read the API**: [sense-emu.readthedocs.io](https://sense-emu.readthedocs.io)
+3. **Read the API**: [project README](https://github.com/juansalmeronmoya/sense-emu-x#readme)
 4. **Development**: Check [DEVELOPMENT.md](DEVELOPMENT.md)
 
 ---
@@ -358,9 +358,9 @@ pytest tests/test_sense_hat.py -v
 ## 💬 Need Help?
 
 1. **Read** [DEVELOPMENT.md](DEVELOPMENT.md) - Detailed troubleshooting
-2. **Check** [GitHub issues](https://github.com/RPi-Distro/python-sense-emu/issues)
-3. **Consult docs** at [sense-emu.readthedocs.io](https://sense-emu.readthedocs.io)
+2. **Check** [GitHub issues](https://github.com/juansalmeronmoya/sense-emu-x/issues)
+3. **Consult docs** at [project README](https://github.com/juansalmeronmoya/sense-emu-x#readme)
 
 ---
 
-**Version:** 1.0.0 | **Date:** 2026-06-07 | **Platforms:** Windows, Linux, macOS
+**Platforms:** Windows, Linux, macOS (Python 3.11+)

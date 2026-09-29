@@ -123,7 +123,7 @@ class ScreenClient:
                 touch()
             else:
                 raise NotImplementedError
-        except (AttributeError, NotImplementedError) as e:
+        except (AttributeError, NotImplementedError):
             touch = lambda: os.utime(self._fd.name, None)
         while not self._touch_stop.wait(1):
             touch()
