@@ -43,6 +43,10 @@ The distribution is now published as ``sense-emu-x`` (the import name is still
 * ``sense_rec``, ``sense_play`` and ``sense_csv`` no longer use
   ``locale.getdefaultlocale()``, which was removed in Python 3.15.
 * Fixed a ``NameError`` when loading ``intl.dll`` for translations on Windows.
+* Windows: IMU updates made within the same ~15.6 ms clock tick were reported
+  by ``RTIMU.IMURead()`` as "no new data" because the timestamp came from a
+  coarse clock. Timestamps now use a high-resolution clock and are strictly
+  increasing.
 * macOS: the lock can tell when a recorded PID has been recycled (the process
   start time is now read with ``ps`` where there is no ``/proc``).
 * ``EmulatorController`` no longer hides the real reason for a failed start

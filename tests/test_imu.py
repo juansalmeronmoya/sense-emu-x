@@ -338,3 +338,69 @@ class TestGyroUnits:
         finally:
             rtimu._map.close()
             rtimu._fd.close()
+
+
+# ---------------------------------------------------------------------------
+# Timestamps must change on every write, even on a coarse clock (Windows'
+# time.monotonic() ticks every ~15.6 ms)
+# ---------------------------------------------------------------------------
+
+import threading as _threading                                 # noqa: E402
+from unittest.mock import patch as _mock_patch                 # noqa: E402
+import sense_emu.imu as _imu_module                            # noqa: E402
+
+
+class TestTimestampCoarseClock:
+    def test_uses_the_high_resolution_clock(self):
+        assert _imu_module._time is time.perf_counter
+
+    def test_strictly_increasing_when_the_clock_does_not_advance(self):
+        with _mock_patch.object(_imu_module, '_time', lambda: 1.0):
+            stamps = [timestamp() for _ in range(50)]
+        assert all(b > a for a, b in zip(stamps, stamps[1:]))
+
+    def test_strictly_increasing_when_the_clock_goes_backwards(self):
+        readings = iter([10.0, 9.0, 8.0, 12.0])
+        with _mock_patch.object(_imu_module, '_time', lambda: next(readings)):
+            stamps = [timestamp() for _ in range(4)]
+        assert all(b > a for a, b in zip(stamps, stamps[1:]))
+
+    def test_unique_across_threads(self):
+        results = []
+
+        def worker():
+            results.append([timestamp() for _ in range(2000)])
+
+        threads = [_threading.Thread(target=worker) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        everything = [ts for chunk in results for ts in chunk]
+        assert len(everything) == len(set(everything))
+        for chunk in results:                    # each thread sees increasing values
+            assert chunk == sorted(chunk)
+
+    def test_reader_sees_an_update_made_within_the_same_clock_tick(self, server, tmp_imu_file):
+        # The Windows failure: IMUInit() then set_imu_values() inside one clock
+        # tick left the timestamp unchanged, so IMURead() reported "no data".
+        from sense_emu.RTIMU import Settings, RTIMU
+        rtimu = RTIMU(Settings(''))
+        try:
+            with _mock_patch.object(_imu_module, '_time', lambda: 1.0):
+                assert rtimu.IMUInit()
+                server.set_imu_values(
+                    accel=(0, 0, 1), gyro=(0.1, 0, 0), compass=(0, 0, 0),
+                    orientation=(0, 0, 0))
+                assert rtimu.IMURead() is True
+                # ... and a second update in the very same tick is also seen
+                server.set_imu_values(
+                    accel=(0, 0, 1), gyro=(0.2, 0, 0), compass=(0, 0, 0),
+                    orientation=(0, 0, 0))
+                assert rtimu.IMURead() is True
+                assert rtimu.getGyro()[0] == pytest.approx(0.2, abs=1 / GYRO_FACTOR)
+                # nothing written since: nothing new
+                assert rtimu.IMURead() is False
+        finally:
+            rtimu._map.close()
+            rtimu._fd.close()

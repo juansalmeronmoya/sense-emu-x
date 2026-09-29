@@ -27,7 +27,7 @@ import subprocess
 from random import Random
 from struct import Struct
 from collections import namedtuple
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 
 import numpy as np
 
@@ -108,19 +108,28 @@ def init_imu():
     return fd
 
 
-# Find the best available time-source for the timestamp() function. The best
-# source will preferably be monotonic, and high-resolution
-try:
-    _time = time.monotonic # 3.3+ (only guaranteed in 3.5+)
-except AttributeError:
-    _time = time.perf_counter # 3.3+
+# The time-source for timestamp() must be monotonic AND high-resolution.
+# time.perf_counter() is both everywhere; time.monotonic() is not: on Windows it
+# only ticks every ~15.6 ms, so two updates of the IMU inside one tick shared a
+# timestamp and readers (RTIMU.IMURead) concluded that nothing had changed.
+_time = time.perf_counter
+_last_timestamp = 0
+_timestamp_lock = Lock()
 
 def timestamp():
     """
     Returns a timestamp as an integer number of microseconds after some
     arbitrary basis (only comparisons of consecutive calls are meaningful).
+    Every call returns a strictly larger value than the one before, so a
+    reader that compares timestamps can always tell that data was rewritten.
     """
-    return int(_time() * 1000000)
+    global _last_timestamp
+    now = int(_time() * 1000000)
+    with _timestamp_lock:
+        if now <= _last_timestamp:
+            now = _last_timestamp + 1
+        _last_timestamp = now
+    return now
 
 
 # Some handy array definitions
